@@ -17,7 +17,10 @@ services:
 networks:
   mlm-network:
     external: true
+    name: mlm-network
   mindbotics-network:
     external: true
+    name: mindbotics-network
   bm2-network:
     external: true
+    name: bm2-network

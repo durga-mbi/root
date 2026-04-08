@@ -23,6 +23,7 @@ services:
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
+    container_name: mlm-phpmyadmin
     restart: unless-stopped
     depends_on:
       - db
