@@ -1,0 +1,57 @@
+# Dependency directories
+node_modules/
+**/node_modules/
+
+# Build artifacts
+dist/
+build/
+**/dist/
+**/build/
+.next/
+.expo/
+*.js.map
+**/*.js.map
+
+# Environment variables
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+user-build.log
+**/logs/
+
+# IDE / System files
+.vscode/
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Scratch & unused files
+plan-purchase-implimentation
+test-case-implimentation.md
+requirment.md
+rahulscema.js
+rahulscema.js.map
+response.md
+**/response.md
+api-test.http
+**/api-test.http
+diag_bv.ts
+MyBMPL-MLM
+user/MyBMPL-MLM
+admin/rahulscema.js
+user/diag_bv.ts
+git brabch
+admin-frontend/git brabch
+postman

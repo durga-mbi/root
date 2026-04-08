@@ -1,0 +1,30 @@
+{
+  "name": "bmpl-new-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "setup": "npm --prefix user install && npm --prefix admin install && npm run prisma:sync && npm run db:generate",
+    "dev:user-frontend": "npm --prefix user-frontend install && npm --prefix user-frontend run dev",
+    "dev:admin-frontend": "npm --prefix admin-frontend install && npm --prefix admin-frontend run dev",
+    "dev:user": "npm --prefix user run dev",
+    "dev:admin": "npm --prefix admin run dev",
+    "build:user": "npm --prefix user run build",
+    "build:admin": "npm --prefix admin run build",
+    "docker:up": "npm run prisma:sync && docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "prisma:sync": "node scripts/sync-prisma.js",
+    "db:generate": "npm run prisma:sync && npm --prefix user run prisma:generate && npm --prefix admin run prisma:generate",
+    "db:migrate:create": "npm run prisma:sync && npm --prefix admin run migration:create",
+    "db:migrate": "npm run prisma:sync && npm --prefix admin run migrate",
+    "db:seed:user": "npm --prefix user run db:seed",
+    "db:seed:admin": "npm --prefix admin run db:seed"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0",
+    "shx": "^0.4.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
+  }
+}
