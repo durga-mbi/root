@@ -1,0 +1,7 @@
+node_modules
+src/tests/MailtrapMailer.test.ts
+.env
+dist/
+dist/*
+src/config/firebase-service-account.json
+dist/config/firebase-service-account.json

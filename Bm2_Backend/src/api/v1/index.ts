@@ -1,0 +1,44 @@
+import express, { Router } from "express";
+import health from "./health";
+import authRouter from "./auth/auth";
+import profileRouter from "./profile/Profile";
+import categoryRouter from "./categories/Categories";
+import productRouter from "./products/Products";
+import productRegisterRouter from "./product-registers/ProductRegisters";
+import productImageRegisterRouter from "./product-image-registers/ProductImageRegister";
+import productRatingRouter from "./product-ratings/ProductRatings";
+import userAddressRouter from "./user-addresses/UserAddress";
+import couponCodeRouter from "./coupon-codes/Couponcode";
+import cartRouter from "./cart/Cart";
+import orderRouter from "./order/order";
+import orderReturnRouter from "./return/OrderReturnRouter";
+import walletRouter from "./wallet/WalletRouter";
+import adminWalletRouter from "./wallet/AdminWalletRouter";
+import notificationRouter from "./notifications/NotificationRouter";
+import faqRouter from "./faq/FaqRouter";
+import policyRouter from "./policies/PolicyRouter";
+import contactRouter from "./contact/ContactRouter";
+
+const v1: Router = express.Router();
+
+v1.use("/health", health);
+v1.use("/auth", authRouter);
+v1.use("/profile", profileRouter);
+v1.use("/categories", categoryRouter);
+v1.use("/products", productRouter);
+v1.use("/product-register", productRegisterRouter);
+v1.use("/product-image-register", productImageRegisterRouter);
+v1.use("/product-ratings", productRatingRouter);
+v1.use("/user-addresses", userAddressRouter);
+v1.use("/coupon-codes", couponCodeRouter);
+v1.use("/cart", cartRouter);
+v1.use("/orders", orderRouter);
+v1.use("/order-returns", orderReturnRouter);
+v1.use("/wallet", walletRouter);
+v1.use("/admin/wallet", adminWalletRouter);
+v1.use("/notifications", notificationRouter);
+v1.use("/faq", faqRouter);
+v1.use("/policies", policyRouter);
+v1.use("/contact", contactRouter);
+
+export default v1;
