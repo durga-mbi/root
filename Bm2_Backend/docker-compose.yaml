@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: bm2-app
     environment:
       DATABASE_URL: mysql://root:${DB_PASSWORD:-secret}@db:3306/${DB_NAME:-u626533055_shop}
       NODE_ENV: development
@@ -12,19 +13,22 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "3003:3000"
+    # ports:
+    #   - "3003:3000"
     restart: always
+    networks:
+      - bm2-network
 
   db:
     image: mysql:8.0
+    container_name: bm2-db
     command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
       MYSQL_DATABASE: ${DB_NAME:-u626533055_shop}
       MYSQL_ROOT_HOST: "%"
-    ports:
-      - "33063:3306"
+    # ports:
+    #   - "33063:3306"
     volumes:
       - db-data:/var/lib/mysql
       - ./u626533055_shop.sql:/docker-entrypoint-initdb.d/u626533055_shop.sql
@@ -45,18 +49,27 @@ services:
       retries: 20
       start_period: 600s
     restart: always
+    networks:
+      - bm2-network
 
   phpmyadmin:
     image: phpmyadmin
+    container_name: bm2-phpmyadmin
     restart: always
-    ports:
-      - "8082:80"
+    # ports:
+    #   - "8082:80"
     environment:
       PMA_ARBITRARY: 1
       PMA_HOST: db
       PMA_PORT: 3306
       PMA_USER: root
       PMA_PASSWORD: ${DB_PASSWORD:-secret}
+    networks:
+      - bm2-network
+
+networks:
+  bm2-network:
+    name: bm2-network
 
 volumes:
   db-data:
