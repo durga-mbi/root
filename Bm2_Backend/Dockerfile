@@ -33,7 +33,7 @@ COPY --from=installer --chown=expressjs:expressjs /app .
 
 USER expressjs
 
-EXPOSE 3000
+EXPOSE 3003
 
-# Run auto-setup then start
-CMD ["npm", "run", "deploy"]
+# Run start
+CMD ["npm", "start"]

@@ -7,7 +7,9 @@
     "sync:me": "npx -y rimraf dist && npm install && npx prisma db push --accept-data-loss && npx prisma generate",
     "build": "tsc",
     "start": "node dist/index.js",
-    "docker-start": "docker-compose up -d"
+    "docker:up": "sh scripts/setup-docker.sh",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "keywords": [],
   "author": "",
@@ -63,7 +65,6 @@
     "express": "^5.0.1",
     "express-oauth2-jwt-bearer": "^1.6.1",
     "express-rate-limit": "^8.2.1",
-    "firebase-admin": "^13.7.0",
     "helmet": "^8.1.0",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",

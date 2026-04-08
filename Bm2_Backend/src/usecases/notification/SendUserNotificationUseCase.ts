@@ -1,12 +1,11 @@
 import { deviceTokenRepository } from "../../data/repositories/notification/DeviceTokenRepository";
-import { pushService } from "../../services/PushService";
 import { notificationRepository } from "../../data/repositories/notification/NotificationRepository";
 
 class SendUserNotificationUsecase {
   async execute(userId: number, title: string, message: string, type: string) {
     const tokens = await deviceTokenRepository.getTokensByUser(userId);
-
-    await pushService.sendPush(tokens, title, message);
+    // Firebase/Push removed as requested
+    console.log(`User notification trigger: ${title} for user ${userId} (Target tokens: ${tokens.length})`);
 
     return notificationRepository.createNotification(
       userId,
