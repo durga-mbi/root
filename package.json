@@ -1,0 +1,10 @@
+{
+  "name": "mbi-root-orchestrator",
+  "version": "1.0.0",
+  "description": "Orchestrates MLM, MindBotics, Bm2_Backend, and Global Proxy",
+  "scripts": {
+    "docker:all:up": "docker compose -f ./MLM/docker-compose.yml up -d && docker compose -f ./MindBotics/docker-compose.yml up -d && docker compose -f ./Bm2_Backend/docker-compose.yaml up -d && sleep 5 && docker compose -f ./proxy/docker-compose.yml up -d",
+    "docker:all:down": "docker compose -f ./proxy/docker-compose.yml down && docker compose -f ./Bm2_Backend/docker-compose.yaml down && docker compose -f ./MindBotics/docker-compose.yml down && docker compose -f ./MLM/docker-compose.yml down",
+    "docker:all:logs": "docker compose -f ./proxy/docker-compose.yml logs -f"
+  }
+}
