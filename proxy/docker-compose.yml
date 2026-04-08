@@ -9,7 +9,6 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ../MindBotics/nginx/certs:/etc/nginx/certs/mindbotics:ro
     networks:
       - mlm-network
       - mindbotics-network
