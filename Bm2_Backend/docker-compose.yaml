@@ -12,7 +12,7 @@ services:
       - .env
     depends_on:
       db:
-        condition: service_healthy
+        condition: service_started
     # ports:
     #   - "3003:3000"
     restart: always
@@ -44,10 +44,10 @@ services:
           "-uroot",
           "-p${DB_PASSWORD:-secret}"
         ]
-      interval: 20s
-      timeout: 10s
-      retries: 20
-      start_period: 600s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     restart: always
     networks:
       - bm2-network

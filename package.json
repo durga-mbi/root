@@ -4,7 +4,7 @@
   "description": "Orchestrates MLM, MindBotics, Bm2_Backend, and Global Proxy",
   "scripts": {
     "docker:setup": "cp -n ./MLM/env.example ./MLM/.env || true && cp -n ./MindBotics/server/.env.example ./MindBotics/server/.env || true && cp -n ./Bm2_Backend/env.example ./Bm2_Backend/.env || true",
-    "docker:all:up": "docker compose -f ./MLM/docker-compose.yml up -d && docker compose -f ./MindBotics/docker-compose.yml up -d && docker compose -f ./Bm2_Backend/docker-compose.yaml up -d && sleep 5 && docker compose -f ./proxy/docker-compose.yml up -d",
+    "docker:all:up": "docker compose -f ./MLM/docker-compose.yml up -d & docker compose -f ./MindBotics/docker-compose.yml up -d & docker compose -f ./Bm2_Backend/docker-compose.yaml up -d & wait && docker compose -f ./proxy/docker-compose.yml up -d",
     "docker:all:down": "docker compose -f ./proxy/docker-compose.yml down && docker compose -f ./Bm2_Backend/docker-compose.yaml down && docker compose -f ./MindBotics/docker-compose.yml down && docker compose -f ./MLM/docker-compose.yml down",
     "docker:all:logs": "docker compose -f ./proxy/docker-compose.yml logs -f"
   }
