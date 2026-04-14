@@ -206,7 +206,7 @@ model UserAddress {
 model ShopStockItem {
   id              Int       @id @default(autoincrement())
   barCode         String?   @map("bar_code") @db.VarChar(100)
-  stockUpdateDate DateTime? @map("stock_update_date") @db.Date
+  stockUpdateDate DateTime? @map("stoct_update_date") @db.Date
   shopId          Int?      @map("shop_id")
   partyId         Int?      @map("party_id")
   edition         String?   @db.VarChar(100)
@@ -284,8 +284,9 @@ model CouponCode {
   status          String?   @default("ACTIVE") @db.VarChar(20)
   createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamp(0)
   updatedAt       DateTime? @updatedAt @map("updated_at") @db.DateTime(0)
-  createdBy       Int?      @map("created_by")
-  updatedBy       Int?      @map("updated_by")
+
+  createdBy String? @map("created_by") @db.VarChar(100)
+  updatedBy String? @map("updated_by") @db.VarChar(100)
 
   @@map("x6_app_coupon_code")
 }
@@ -588,7 +589,7 @@ model AppContent {
   title     String    @db.VarChar(200)
   content   String    @db.LongText
   updatedAt DateTime? @updatedAt @map("updated_at") @db.DateTime(0)
-  updatedBy Int?      @map("updated_by")
+  updatedBy String?   @map("updated_by")
 
   @@map("x21_app_content")
 }
