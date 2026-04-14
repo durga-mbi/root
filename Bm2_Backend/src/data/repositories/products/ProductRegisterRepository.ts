@@ -103,34 +103,45 @@ export const getFilteredProducts = async (
     isDisplay: x1_app_product_register_is_display.ONE,
   };
 
+  // search
   if (filters.q) {
     where.productName = { contains: filters.q };
   }
 
-  // Stock table specific filters (Price and Category)
-  const stockWhere: any = { status: caa1_shop_stock_item_db_status.ONE };
+  // ✅ FIXED: category filter MUST be here
+  if (filters.categoryId !== undefined) {
+    where.categoryId = Number(filters.categoryId);
+  }
+
+  // rating filter
+  if (filters.rating !== undefined) {
+    where.ratings = { gte: filters.rating };
+  }
+
+  // stock filters (ONLY price + status)
+  const stockWhere: any = {
+    status: caa1_shop_stock_item_db_status.ONE,
+  };
+
   let hasStockFilter = false;
 
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
     hasStockFilter = true;
     stockWhere.saleRate = {};
-    if (filters.minPrice !== undefined)
+
+    if (filters.minPrice !== undefined) {
       stockWhere.saleRate.gte = filters.minPrice;
-    if (filters.maxPrice !== undefined)
+    }
+
+    if (filters.maxPrice !== undefined) {
       stockWhere.saleRate.lte = filters.maxPrice;
+    }
   }
 
-  if (filters.categoryId !== undefined) {
-    hasStockFilter = true;
-    stockWhere.catId = filters.categoryId;
-  }
+  // ❌ REMOVED: category from stockItems (WRONG)
 
   if (hasStockFilter) {
     where.stockItems = { some: stockWhere };
-  }
-
-  if (filters.rating !== undefined) {
-    where.ratings = { gte: filters.rating };
   }
 
   const [products, totalCount] = await Promise.all([
@@ -146,11 +157,13 @@ export const getFilteredProducts = async (
       orderBy: { id: "desc" },
       take,
     }),
+
     prisma.productRegister.count({ where }),
   ]);
 
   const hasMore = products.length > limit;
   const data = hasMore ? products.slice(0, limit) : products;
+
   const nextCursor =
     hasMore && data.length > 0 ? data[data.length - 1].id : null;
 

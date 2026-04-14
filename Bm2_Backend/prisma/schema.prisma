@@ -79,6 +79,7 @@ model Category {
   insertUser    String?                         @map("insert_user") @db.VarChar(120)
   updateDate    String?                         @map("update_date") @db.VarChar(40)
   updateUser    String?                         @map("update_user") @db.VarChar(120)
+  products      ProductRegister[]
 
   @@index([id, catName], map: "id")
   @@index([id, catName, catCode], map: "index_category_db")
@@ -89,9 +90,12 @@ model Category {
 // PRODUCT REGISTER
 //////////////////////////////////////////////////////
 model ProductRegister {
-  id             Int                                 @id @default(autoincrement())
-  comId          Int?                                @map("com_id")
-  productId      Int?                                @unique(map: "product_id") @map("product_id")
+  id         Int       @id @default(autoincrement())
+  comId      Int?      @map("com_id")
+  productId  Int?      @unique(map: "product_id") @map("product_id")
+  categoryId Int?      @map("category_id")
+  category   Category? @relation(fields: [categoryId], references: [id])
+
   productName    String?                             @map("product_name") @db.VarChar(255)
   newProtype     String?                             @map("new_protype") @db.VarChar(100)
   displaySection String?                             @map("display_section") @db.VarChar(100)
@@ -200,13 +204,15 @@ model UserAddress {
 //////////////////////////////////////////////////////
 
 model ShopStockItem {
-  id                  Int                            @id @default(autoincrement())
-  barCode             String?                        @map("bar_code") @db.VarChar(100)
-  stockUpdateDate     DateTime?                      @map("stock_update_date") @db.Date
-  shopId              Int?                           @map("shop_id")
-  partyId             Int?                           @map("party_id")
-  edition             String?                        @db.VarChar(100)
-  itemId              Int?                           @map("item_id")
+  id              Int       @id @default(autoincrement())
+  barCode         String?   @map("bar_code") @db.VarChar(100)
+  stockUpdateDate DateTime? @map("stock_update_date") @db.Date
+  shopId          Int?      @map("shop_id")
+  partyId         Int?      @map("party_id")
+  edition         String?   @db.VarChar(100)
+
+  productId Int? @map("item_id")
+
   itemName            String?                        @map("item_name") @db.VarChar(50)
   itemCode            String?                        @map("item_code") @db.VarChar(50)
   brandId             String?                        @map("brand_id") @db.VarChar(50)
@@ -246,13 +252,14 @@ model ShopStockItem {
   insert_user         String?                        @db.VarChar(120)
   update_date         String?                        @db.VarChar(40)
   update_user         String?                        @db.VarChar(120)
-  product             ProductRegister?               @relation(fields: [itemId], references: [productId])
+
+  product ProductRegister? @relation(fields: [productId], references: [productId])
 
   @@index([barCode], map: "bar_code")
-  @@index([id, barCode, shopId, partyId, itemId, brandId, design_id, color_id, fabric_id, catId, unit_id], map: "id")
+  @@index([id, barCode, shopId, partyId, productId, brandId, design_id, color_id, fabric_id, catId, unit_id], map: "id")
   @@index([id, barCode, shopId], map: "index2")
   @@index([partyId], map: "party_id")
-  @@index([itemId], map: "caa1_shop_stock_item_db_item_id_fkey")
+  @@index([productId], map: "caa1_shop_stock_item_db_item_id_fkey")
   @@map("caa1_shop_stock_item_db")
 }
 
@@ -350,20 +357,21 @@ model x12_app_user_bm_coins {
 ////////////////////////////////////////////////////// 
 
 model x5_app_cart {
-  ItemId    Int             @map("product_id")
-  quantity  Int             @default(1) @map("qnty")
-  isDeleted Boolean         @default(false) @map("isdelete")
-  createdAt DateTime        @default(now()) @map("created_at")
-  updatedAt DateTime        @updatedAt @map("updated_at")
-  createdBy Int?            @map("created_by")
-  updatedBy Int?            @map("updated_by")
-  cartId    Int             @id @default(autoincrement()) @map("cart_id")
-  comId     Int             @map("com_id")
-  customer  Customer        @relation(fields: [comId], references: [comId])
-  product   ProductRegister @relation(fields: [ItemId], references: [productId])
+  productId Int      @map("product_id")
+  quantity  Int      @default(1) @map("qnty")
+  isDeleted Boolean  @default(false) @map("isdelete")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy Int?     @map("created_by")
+  updatedBy Int?     @map("updated_by")
+  cartId    Int      @id @default(autoincrement()) @map("cart_id")
+  comId     Int      @map("com_id")
 
-  @@unique([comId, ItemId], name: "comId_ItemId")
-  @@index([ItemId], map: "x5_app_cart_product_id_fkey")
+  customer Customer        @relation(fields: [comId], references: [comId])
+  product  ProductRegister @relation(fields: [productId], references: [id])
+
+  @@unique([comId, productId], name: "comId_productId")
+  @@index([productId], map: "x5_app_cart_product_id_fkey")
   @@map("x5_app_cart")
 }
 
@@ -565,8 +573,8 @@ model Faq {
   isActive  Boolean   @default(true) @map("is_active")
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(0)
   updatedAt DateTime? @updatedAt @map("updated_at") @db.DateTime(0)
-  createdBy Int?      @map("created_by")
-  updatedBy Int?      @map("updated_by")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
 
   @@index([category])
   @@index([isActive])

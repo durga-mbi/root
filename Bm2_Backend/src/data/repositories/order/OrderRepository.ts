@@ -206,7 +206,7 @@ export class OrderRepository {
    */
   async getShopStockItem(productId: number) {
     return (prisma as any).shopStockItem.findFirst({
-      where: { itemId: productId, status: caa1_shop_stock_item_db_status.ONE },
+      where: { productId: productId, status: caa1_shop_stock_item_db_status.ONE },
     });
   }
 

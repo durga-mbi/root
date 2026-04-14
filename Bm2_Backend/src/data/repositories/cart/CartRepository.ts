@@ -1,12 +1,155 @@
+// import prisma from "../../../prisma-client";
+
+// export class CartRepository {
+//   // ---------------- Add to Cart ----------------
+//   async addToCart(comId: number, ProductId: number, quantity: number) {
+//     // Check if item already exists (even if soft deleted)
+//     const existing = await prisma.x5_app_cart.findUnique({
+//       where: {
+//         comId_ProductId: { comId, ProductId },
+//       },
+//     });
+
+//     const includeOptions = {
+//       product: {
+//         include: {
+//           images: { select: { proimgs: true }, take: 1 },
+//           stockItems: { where: { status: "ONE" as const }, take: 1 },
+//         },
+//       },
+//     };
+
+//     // If item exists and NOT deleted → increase quantity
+//     if (existing && existing.isDeleted === false) {
+//       return prisma.x5_app_cart.update({
+//         where: {
+//           comId_ProductId: { comId, ProductId },
+//         },
+//         data: {
+//           quantity: existing.quantity + quantity,
+//         },
+//         include: includeOptions,
+//       });
+//     }
+
+//     // If item exists but soft deleted → restore it and update quantity
+//     if (existing && existing.isDeleted === true) {
+//       return prisma.x5_app_cart.update({
+//         where: {
+//           comId_ProductId: { comId, ProductId },
+//         },
+//         data: {
+//           quantity,
+//           isDeleted: false,
+//         },
+//         include: includeOptions,
+//       });
+//     }
+
+//     // If item does not exist → create new
+//     console.log(
+//       `DEBUG: Creating cart item for comId=${comId}, ProductId=${ProductId}`,
+//     );
+//     return prisma.x5_app_cart.create({
+//       data: {
+//         comId,
+//         ProductId,
+//         quantity,
+//         isDeleted: false,
+//       },
+//       include: includeOptions,
+//     });
+//   }
+
+//   // ---------------- Get Cart ----------------
+//   async getCartByComId(comId: number) {
+//     return prisma.x5_app_cart.findMany({
+//       where: {
+//         comId,
+//         isDeleted: false,
+//       },
+//       include: {
+//         product: {
+//           include: {
+//             images: {
+//               select: { proimgs: true },
+//               take: 1,
+//             },
+//             stockItems: {
+//               where: { status: "ONE" },
+//               take: 1,
+//             },
+//           },
+//         },
+//       },
+//     });
+//   }
+
+//   // ---------------- Update Quantity ----------------
+//   async updateQuantity(comId: number, ProductId: number, quantity: number) {
+//     const existing = await prisma.x5_app_cart.findFirst({
+//       where: {
+//         comId,
+//         ProductId,
+//         isDeleted: false,
+//       },
+//     });
+
+//     if (!existing) {
+//       throw new Error("Cart item not found");
+//     }
+
+//     return prisma.x5_app_cart.update({
+//       where: {
+//         comId_ProductId: { comId, ProductId },
+//       },
+//       data: {
+//         quantity,
+//       },
+//       include: {
+//         product: {
+//           include: {
+//             images: { select: { proimgs: true }, take: 1 },
+//             stockItems: { where: { status: "ONE" }, take: 1 },
+//           },
+//         },
+//       },
+//     });
+//   }
+
+//   // ---------------- Soft Delete Single Item ----------------
+//   async removeCartItem(comId: number, ProductId: number) {
+//     return prisma.x5_app_cart.update({
+//       where: {
+//         comId_ProductId: { comId, ProductId },
+//       },
+//       data: {
+//         isDeleted: true,
+//       },
+//     });
+//   }
+
+//   // ---------------- Soft Delete All ----------------
+//   async clearCart(comId: number) {
+//     return prisma.x5_app_cart.updateMany({
+//       where: {
+//         comId,
+//         isDeleted: false,
+//       },
+//       data: {
+//         isDeleted: true,
+//       },
+//     });
+//   }
+// }
 import prisma from "../../../prisma-client";
 
 export class CartRepository {
   // ---------------- Add to Cart ----------------
-  async addToCart(comId: number, ItemId: number, quantity: number) {
-    // Check if item already exists (even if soft deleted)
+  async addToCart(comId: number, productId: number, quantity: number) {
     const existing = await prisma.x5_app_cart.findUnique({
       where: {
-        comId_ItemId: { comId, ItemId },
+        comId_productId: { comId, productId },
       },
     });
 
@@ -19,11 +162,11 @@ export class CartRepository {
       },
     };
 
-    // If item exists and NOT deleted → increase quantity
-    if (existing && existing.isDeleted === false) {
+    // If exists & active → increase quantity
+    if (existing && !existing.isDeleted) {
       return prisma.x5_app_cart.update({
         where: {
-          comId_ItemId: { comId, ItemId },
+          comId_productId: { comId, productId },
         },
         data: {
           quantity: existing.quantity + quantity,
@@ -32,11 +175,11 @@ export class CartRepository {
       });
     }
 
-    // If item exists but soft deleted → restore it and update quantity
-    if (existing && existing.isDeleted === true) {
+    // If exists but deleted → restore
+    if (existing && existing.isDeleted) {
       return prisma.x5_app_cart.update({
         where: {
-          comId_ItemId: { comId, ItemId },
+          comId_productId: { comId, productId },
         },
         data: {
           quantity,
@@ -46,14 +189,11 @@ export class CartRepository {
       });
     }
 
-    // If item does not exist → create new
-    console.log(
-      `DEBUG: Creating cart item for comId=${comId}, ItemId=${ItemId}`,
-    );
+    // Create new
     return prisma.x5_app_cart.create({
       data: {
         comId,
-        ItemId,
+        productId,
         quantity,
         isDeleted: false,
       },
@@ -71,14 +211,8 @@ export class CartRepository {
       include: {
         product: {
           include: {
-            images: {
-              select: { proimgs: true },
-              take: 1,
-            },
-            stockItems: {
-              where: { status: "ONE" },
-              take: 1,
-            },
+            images: { select: { proimgs: true }, take: 1 },
+            stockItems: { where: { status: "ONE" }, take: 1 },
           },
         },
       },
@@ -86,11 +220,11 @@ export class CartRepository {
   }
 
   // ---------------- Update Quantity ----------------
-  async updateQuantity(comId: number, ItemId: number, quantity: number) {
+  async updateQuantity(comId: number, productId: number, quantity: number) {
     const existing = await prisma.x5_app_cart.findFirst({
       where: {
         comId,
-        ItemId,
+        productId,
         isDeleted: false,
       },
     });
@@ -101,7 +235,7 @@ export class CartRepository {
 
     return prisma.x5_app_cart.update({
       where: {
-        comId_ItemId: { comId, ItemId },
+        comId_productId: { comId, productId },
       },
       data: {
         quantity,
@@ -117,11 +251,11 @@ export class CartRepository {
     });
   }
 
-  // ---------------- Soft Delete Single Item ----------------
-  async removeCartItem(comId: number, ItemId: number) {
+  // ---------------- Remove Single Item ----------------
+  async removeCartItem(comId: number, productId: number) {
     return prisma.x5_app_cart.update({
       where: {
-        comId_ItemId: { comId, ItemId },
+        comId_productId: { comId, productId },
       },
       data: {
         isDeleted: true,
@@ -129,7 +263,7 @@ export class CartRepository {
     });
   }
 
-  // ---------------- Soft Delete All ----------------
+  // ---------------- Clear Cart ----------------
   async clearCart(comId: number) {
     return prisma.x5_app_cart.updateMany({
       where: {

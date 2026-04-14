@@ -14,7 +14,7 @@ const enrichCartItem = (item: any) => {
   return {
     cartId: item.cartId,
     id: item.product?.id,
-    productId: item.ItemId,
+    productId: item.ProductId,
     productName: item.product?.productName,
     productImage: mainImage,
     image: mainImage,
