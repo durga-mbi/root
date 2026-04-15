@@ -266,9 +266,8 @@ model ShopStockItem {
 
   @@index([barCode], map: "bar_code")
 
-   @@index(
-    [id, barCode, shopId, partyId, productId, brandId, design_id, color_id, fabric_id, categoryId, unit_id], map: "id"
-  )
+  @@index([id, barCode, shopId, partyId, productId, brandId, design_id, color_id, fabric_id, categoryId, unit_id], map: "id")
+
 
   @@index([id, barCode, shopId], map: "index2")
   @@index([partyId], map: "party_id")
