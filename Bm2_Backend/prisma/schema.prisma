@@ -225,7 +225,7 @@ model ShopStockItem {
   fabric_id   Int?
   fabric_name String? @db.VarChar(50)
 
-   categoryId Int? @map("cat_id")
+  categoryId Int? @map("cat_id")
   catName    String? @map("cat_name") @db.VarChar(50)
 
   unit_id   Int?

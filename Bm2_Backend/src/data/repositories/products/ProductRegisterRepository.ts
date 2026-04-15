@@ -36,11 +36,11 @@ export const getRelatedProducts = async (
       isDisplay: x1_app_product_register_is_display.ONE,
       stockItems: categoryId
         ? {
-            some: {
-              catId: categoryId,
-              status: caa1_shop_stock_item_db_status.ONE,
-            },
-          }
+          some: {
+            categoryId: categoryId,
+            status: caa1_shop_stock_item_db_status.ONE,
+          },
+        }
         : undefined,
     },
     include: {
