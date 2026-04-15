@@ -213,53 +213,72 @@ model ShopStockItem {
 
   productId Int? @map("item_id")
 
-  itemName            String?                        @map("item_name") @db.VarChar(50)
-  itemCode            String?                        @map("item_code") @db.VarChar(50)
-  brandId             String?                        @map("brand_id") @db.VarChar(50)
-  brandName           String?                        @map("brand_name") @db.VarChar(50)
-  brandCode           String?                        @map("brand_code") @db.VarChar(50)
-  design_id           Int?
-  design_name         String?                        @db.VarChar(50)
-  color_id            Int?
-  color_name          String?                        @db.VarChar(50)
-  fabric_id           Int?
-  fabric_name         String?                        @db.VarChar(50)
-  catId               Int?                           @map("cat_id")
-  catName             String?                        @map("cat_name") @db.VarChar(50)
-  unit_id             Int?
-  unit_name           String?                        @db.VarChar(50)
-  gstper              Int?
-  pur_rate            Float?                         @db.Float
-  mrpRate             String?                        @map("mrp_rate") @db.VarChar(20)
-  saleRate            Float?                         @map("sale_rate") @db.Float
-  markupamt           Float                          @default(0)
-  entry_meter         Float?                         @default(0) @db.Float
-  entry_qty           Float?                         @default(0) @db.Float
-  entry_return_meter  Float?                         @default(0) @db.Float
-  entry_return_qty    Float?                         @default(0) @db.Float
-  issue_meter         Float?                         @default(0) @db.Float
-  issue_qty           Float?                         @default(0) @db.Float
-  issue_return_meter  Float?                         @default(0) @db.Float
-  issue_return_qty    Float?                         @default(0) @db.Float
-  transfer_return_qty Float?                         @default(0) @db.Float
-  cur_meter           Float?                         @default(0) @db.Float
-  curQty              Float?                         @default(0) @map("cur_qty") @db.Float
-  status              caa1_shop_stock_item_db_status @default(ONE)
-  item_remarks        String?                        @db.Text
-  bill_comment        String?                        @db.Text
-  indate              DateTime                       @db.Date
-  insert_date         String?                        @db.VarChar(40)
-  insert_user         String?                        @db.VarChar(120)
-  update_date         String?                        @db.VarChar(40)
-  update_user         String?                        @db.VarChar(120)
+  itemName   String? @map("item_name") @db.VarChar(50)
+  itemCode   String? @map("item_code") @db.VarChar(50)
+
+  brandId   String? @map("brand_id") @db.VarChar(50)
+  brandName String? @map("brand_name") @db.VarChar(50)
+  brandCode String? @map("brand_code") @db.VarChar(50)
+
+  design_id   Int?
+  design_name String? @db.VarChar(50)
+
+  color_id   Int?
+  color_name String? @db.VarChar(50)
+
+  fabric_id   Int?
+  fabric_name String? @db.VarChar(50)
+
+   categoryId Int? @map("cat_id")
+  catName    String? @map("cat_name") @db.VarChar(50)
+
+  unit_id   Int?
+  unit_name String? @db.VarChar(50)
+
+  gstper  Int?
+  pur_rate Float? @db.Float
+
+  mrpRate  String? @map("mrp_rate") @db.VarChar(20)
+  saleRate Float?  @map("sale_rate") @db.Float
+
+  markupamt Float @default(0)
+
+  entry_meter         Float? @default(0) @db.Float
+  entry_qty           Float? @default(0) @db.Float
+  entry_return_meter  Float? @default(0) @db.Float
+  entry_return_qty    Float? @default(0) @db.Float
+  issue_meter         Float? @default(0) @db.Float
+  issue_qty           Float? @default(0) @db.Float
+  issue_return_meter  Float? @default(0) @db.Float
+  issue_return_qty    Float? @default(0) @db.Float
+  transfer_return_qty Float? @default(0) @db.Float
+  cur_meter           Float? @default(0) @db.Float
+
+  curQty Float? @default(0) @map("cur_qty") @db.Float
+
+  status       caa1_shop_stock_item_db_status @default(ONE)
+  item_remarks String? @db.Text
+  bill_comment String? @db.Text
+
+  indate      DateTime @db.Date
+  insert_date String?  @db.VarChar(40)
+  insert_user String?  @db.VarChar(120)
+  update_date String?  @db.VarChar(40)
+  update_user String?  @db.VarChar(120)
 
   product ProductRegister? @relation(fields: [productId], references: [productId])
 
   @@index([barCode], map: "bar_code")
-  @@index([id, barCode, shopId, partyId, productId, brandId, design_id, color_id, fabric_id, catId, unit_id], map: "id")
+
+   @@index(
+    [id, barCode, shopId, partyId, productId, brandId, design_id, color_id, fabric_id, categoryId, unit_id],
+    map: "id"
+  )
+
   @@index([id, barCode, shopId], map: "index2")
   @@index([partyId], map: "party_id")
   @@index([productId], map: "caa1_shop_stock_item_db_item_id_fkey")
+
   @@map("caa1_shop_stock_item_db")
 }
 
