@@ -6,6 +6,7 @@ import { getProductMainImage } from "../../utils/product-image";
 
 const cartRepository = new CartRepository();
 
+// ---------------- Helper ----------------
 const enrichCartItem = (item: any) => {
   const price = item.product?.stockItems?.[0]?.saleRate || 0;
   const itemTotal = price * item.quantity;
@@ -31,13 +32,9 @@ export const addToCart = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    // Ensure we use comId (business ID) for the cart, not the internal id
     let comId = req.user!.comId;
+
     if (!comId) {
-      console.log(
-        `WARNING: ComId missing in token for user ${req.user!.id}. Falling back to db lookup.`,
-      );
-      // This is a safety fallback in case token is misconfigured
       const customer = await prisma.customer.findUnique({
         where: { id: req.user!.id },
       });
@@ -52,10 +49,62 @@ export const addToCart = async (
       return;
     }
 
-    const productId = req.body.productId || req.body.ItemId;
+    let productId = req.body.productId || req.body.ItemId;
     const quantity = req.body.quantity;
 
-    if (productId === undefined || quantity === undefined) {
+    // 🔥 HANDLE STRING PRODUCT INPUT
+    if (!productId && req.body.product) {
+      const text = req.body.product;
+
+      const barcodeMatch = text.match(/Barcode:\s*(\d+)/);
+      if (!barcodeMatch) {
+        res.status(400).json({
+          success: false,
+          message: "Invalid product format",
+        });
+        return;
+      }
+
+      const barcode = barcodeMatch[1];
+
+      let stock = await prisma.shopStockItem.findFirst({
+        where: { barCode: barcode },
+      });
+
+      if (stock && stock.productId) {
+        productId = stock.productId;
+      } else {
+        const nameMatch = text.match(/^(.+?)\s*\(/);
+        const mrpMatch = text.match(/MRP:\s*(\d+)/);
+        const brandMatch = text.match(/Brand:\s*([^|]+)/);
+        const designMatch = text.match(/Design:\s*([^|]+)/);
+
+        const productName = nameMatch?.[1]?.trim() || "Unknown Product";
+        const mrp = Number(mrpMatch?.[1] || 0);
+
+        const product = await prisma.productRegister.create({
+          data: {
+            productName,
+          },
+        });
+
+        await prisma.shopStockItem.create({
+          data: {
+            barCode: barcode,
+            productId: product.productId,
+            itemName: productName,
+            saleRate: mrp,
+            brandName: brandMatch?.[1]?.trim(),
+            design_name: designMatch?.[1]?.trim(),
+            indate: new Date(),
+          },
+        });
+
+        productId = product.productId;
+      }
+    }
+
+    if (!productId || quantity === undefined) {
       res.status(400).json({
         success: false,
         message: "ProductId and quantity are required",
@@ -98,6 +147,7 @@ export const getCart = async (
 ): Promise<void> => {
   try {
     let comId = req.user!.comId;
+
     if (!comId) {
       const customer = await prisma.customer.findUnique({
         where: { id: req.user!.id },
@@ -143,6 +193,7 @@ export const updateCartQuantity = async (
 ): Promise<void> => {
   try {
     let comId = req.user!.comId;
+
     if (!comId) {
       const customer = await prisma.customer.findUnique({
         where: { id: req.user!.id },
@@ -169,11 +220,7 @@ export const updateCartQuantity = async (
       return;
     }
 
-    if (
-      quantity === undefined ||
-      isNaN(Number(quantity)) ||
-      Number(quantity) < 1
-    ) {
+    if (!quantity || isNaN(Number(quantity)) || Number(quantity) < 1) {
       res.status(400).json({
         success: false,
         message: "Valid quantity (min 1) is required",
@@ -205,6 +252,7 @@ export const removeFromCart = async (
 ): Promise<void> => {
   try {
     let comId = req.user!.comId;
+
     if (!comId) {
       const customer = await prisma.customer.findUnique({
         where: { id: req.user!.id },
@@ -249,6 +297,7 @@ export const clearCart = async (
 ): Promise<void> => {
   try {
     let comId = req.user!.comId;
+
     if (!comId) {
       const customer = await prisma.customer.findUnique({
         where: { id: req.user!.id },

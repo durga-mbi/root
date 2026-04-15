@@ -1,4 +1,6 @@
 import { NextFunction, Request, Response } from "express";
+import prisma from "../../prisma-client"; // ✅ IMPORTANT
+
 import { createOrderUseCase } from "../../usecases/order/CreateOrderUseCase";
 import { cancelOrderUseCase } from "../../usecases/order/CancelOrderUseCase";
 import { getOrderUseCase } from "../../usecases/order/GetOrderUseCase";
@@ -25,12 +27,82 @@ export const createOrderController = async (
       return;
     }
 
-    const orderData = {
+    const orderData: any = {
       ...req.body,
       comId: user.comId,
     };
 
+    // ====================================================
+    // 🔥 HANDLE PRODUCT STRING → productId RESOLUTION
+    // ====================================================
+    if (orderData.items && Array.isArray(orderData.items)) {
+      for (let item of orderData.items) {
+        if (!item.productId && item.product) {
+          const text = item.product;
+
+          // ✅ Extract barcode
+          const barcodeMatch = text.match(/Barcode:\s*(\d+)/);
+          if (!barcodeMatch) {
+            res.status(400).json({
+              success: false,
+              msg: "Invalid product format",
+            });
+            return;
+          }
+
+          const barcode = barcodeMatch[1];
+
+          // ✅ Check if stock already exists
+          let stock = await prisma.shopStockItem.findFirst({
+            where: { barCode: barcode },
+          });
+
+          if (stock && stock.productId) {
+            // ✅ Existing product
+            item.productId = stock.productId;
+          } else {
+            // ✅ Parse remaining details
+            const nameMatch = text.match(/^(.+?)\s*\(/);
+            const mrpMatch = text.match(/MRP:\s*(\d+)/);
+            const brandMatch = text.match(/Brand:\s*([^|]+)/);
+            const designMatch = text.match(/Design:\s*([^|]+)/);
+
+            const productName = nameMatch?.[1]?.trim() || "Unknown Product";
+            const mrp = Number(mrpMatch?.[1] || 0);
+            const brand = brandMatch?.[1]?.trim() || null;
+            const design = designMatch?.[1]?.trim() || null;
+
+            // ✅ Create ProductRegister
+            const product = await prisma.productRegister.create({
+              data: {
+                productName: productName,
+              },
+            });
+
+            // ✅ Create ShopStockItem
+            await prisma.shopStockItem.create({
+              data: {
+                barCode: barcode,
+                productId: product.productId,
+                itemName: productName,
+                saleRate: mrp,
+                brandName: brand,
+                design_name: design,
+                indate: new Date(),
+              },
+            });
+
+            item.productId = product.productId;
+          }
+        }
+      }
+    }
+
+    // ====================================================
+    // 🔥 NOW CALL USECASE (CLEAN DATA)
+    // ====================================================
     const result = await createOrderUseCase(orderData);
+
     res.status(201).json({
       success: true,
       msg: "Order placed successfully",
