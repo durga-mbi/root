@@ -93,7 +93,7 @@ model ProductRegister {
   id         Int       @id @default(autoincrement())
   comId      Int?      @map("com_id")
   productId  Int?      @unique(map: "product_id") @map("product_id")
-  categoryId Int?      @map("cat_id")
+  categoryId Int       @map("cat_id")
   category   Category? @relation(fields: [categoryId], references: [id])
 
   productName    String?                             @map("product_name") @db.VarChar(255)
@@ -198,6 +198,7 @@ model UserAddress {
   @@index([userId], map: "x4_app_user_addresses_user_id_fkey")
   @@map("x4_app_user_addresses")
 }
+
 model ShopStockItem {
   id              Int       @id @default(autoincrement())
   barCode         String?   @map("bar_code") @db.VarChar(100)
@@ -205,9 +206,9 @@ model ShopStockItem {
   shopId          Int?      @map("shop_id")
 
   // DB column is praty_id (kept as-is)
-  partyId         Int?      @map("praty_id")
+  partyId Int? @map("praty_id")
 
-  edition         String?   @db.VarChar(100)
+  edition String? @db.VarChar(100)
 
   productId Int? @map("item_id")
 
@@ -227,7 +228,7 @@ model ShopStockItem {
   fabric_id   Int?
   fabric_name String? @db.VarChar(50)
 
-  categoryId Int? @map("cat_id")
+  categoryId Int?    @map("cat_id")
   catName    String? @map("cat_name") @db.VarChar(50)
 
   unit_id   Int?
@@ -255,8 +256,8 @@ model ShopStockItem {
   curQty Float? @default(0) @map("cur_qty")
 
   status       caa1_shop_stock_item_db_status @default(ONE)
-  item_remarks String? @db.Text
-  bill_comment String? @db.Text
+  item_remarks String?                        @db.Text
+  bill_comment String?                        @db.Text
 
   indate      DateTime @db.Date
   insert_date String?  @db.VarChar(40)
@@ -271,7 +272,6 @@ model ShopStockItem {
   @@index([partyId], map: "idx_party_id")
   @@index([productId], map: "idx_product_id")
   @@index([categoryId], map: "idx_category_id")
-
   @@map("caa1_shop_stock_item_db")
 }
 
