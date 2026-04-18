@@ -19,7 +19,7 @@ const mapProductWithPrice = (item: any) => {
 
   return {
     ...item,
-    price: stock?.entry_onlinerate || stock?.saleRate || 0,
+    price: stock?.online_rate || stock?.saleRate || 0,
   };
 };
 
