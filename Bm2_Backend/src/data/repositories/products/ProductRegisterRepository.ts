@@ -18,10 +18,10 @@ const productInclude = {
   images: true,
   stockItems: {
     where: { status: caa1_shop_stock_item_db_status.ONE },
-    orderBy: { saleRate: "asc" }, // IMPORTANT: deterministic stock
+    orderBy: { saleRate: "asc" as const }, // IMPORTANT: deterministic stock
     take: 1,
   },
-};
+} as const;
 
 //////////////////////////////////////////////////////
 // COMMON MAPPER
@@ -70,7 +70,7 @@ export const getRelatedProducts = async (
     },
     include: productInclude,
     take: limit,
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "desc" as const },
   });
 
   return products.map(mapProductWithPrice);
@@ -94,7 +94,7 @@ export const getAllProductRegisters = async (
     prisma.productRegister.findMany({
       where: cursor ? { ...where, id: { lt: cursor } } : where,
       include: productInclude,
-      orderBy: { id: "desc" },
+      orderBy: { id: "desc" as const },
       take,
     }),
     prisma.productRegister.count({ where }),
@@ -138,7 +138,6 @@ export const getFilteredProducts = async (
   if (filters.q) {
     where.productName = {
       contains: filters.q,
-      mode: "insensitive",
     };
   }
 
@@ -175,7 +174,7 @@ export const getFilteredProducts = async (
     prisma.productRegister.findMany({
       where: cursor ? { ...where, id: { lt: cursor } } : where,
       include: productInclude,
-      orderBy: { id: "desc" },
+      orderBy: { id: "desc" as const },
       take,
     }),
     prisma.productRegister.count({ where }),
@@ -212,7 +211,7 @@ export const getNewArrivals = async (
     prisma.productRegister.findMany({
       where: cursor ? { ...where, id: { lt: cursor } } : where,
       include: productInclude,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "desc" as const },
       take,
     }),
     prisma.productRegister.count({ where }),
@@ -251,7 +250,7 @@ export const getProductRegistersByDisplaySection = async (
     prisma.productRegister.findMany({
       where: cursor ? { ...where, id: { lt: cursor } } : where,
       include: productInclude,
-      orderBy: { id: "desc" },
+      orderBy: { id: "desc" as const },
       take,
     }),
     prisma.productRegister.count({ where }),
@@ -283,11 +282,10 @@ export const searchProductRegistersByName = async (
       isDisplay: x1_app_product_register_is_display.ONE,
       productName: {
         contains: searchTerm,
-        mode: "insensitive",
       },
     },
     include: productInclude,
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "desc" as const },
     ...(limit && { take: limit }),
   });
 

@@ -68,7 +68,7 @@ export class CartRepository {
         product: {
           include: {
             images: { select: { proimgs: true }, take: 1 },
-            stockItems: { where: { status: "ONE" }, take: 1 },
+            stockItems: { where: { status: "ONE" as const }, take: 1 },
           },
         },
       },
