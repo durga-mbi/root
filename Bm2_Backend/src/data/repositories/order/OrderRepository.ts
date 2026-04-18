@@ -1,7 +1,7 @@
 import { Prisma, caa1_shop_stock_item_db_status } from "@prisma/client";
 import prisma from "../../../prisma-client";
 import { getProductMainImage } from "../../../utils/product-image";
-import { WalletService } from "@/services/WalletService";
+import { WalletService } from "../../../services/WalletService";
 
 export enum OrderStatus {
   PENDING = "PENDING",
@@ -195,18 +195,26 @@ export class OrderRepository {
   /**
    * Get product by ID
    */
-  async getProductById(productId: number) {
+  async getProductById(id: number) {
     return (prisma as any).productRegister.findUnique({
-      where: { productId: productId },
+      where: { id: id },
     });
   }
 
   /**
    * Get shop stock item by product ID
    */
-  async getShopStockItem(productId: number) {
+  async getShopStockItem(id: number) {
+    // 1. First get the product to find its productId field
+    const product = await this.getProductById(id);
+    if (!product || !product.productId) return null;
+
+    // 2. Lookup stock by the unique productId column
     return (prisma as any).shopStockItem.findFirst({
-      where: { productId: productId, status: caa1_shop_stock_item_db_status.ONE },
+      where: {
+        productId: product.productId,
+        status: caa1_shop_stock_item_db_status.ONE,
+      },
     });
   }
 
@@ -463,162 +471,3 @@ export class OrderRepository {
     });
   }
 }
-// import { Prisma, caa1_shop_stock_item_db_status } from "@prisma/client";
-// import prisma from "../../../prisma-client";
-// import { getProductMainImage } from "../../../utils/product-image";
-// import { WalletService } from "../../../services/WalletService";
-
-// export enum OrderStatus {
-//   PENDING = "PENDING",
-//   CONFIRMED = "CONFIRMED",
-//   SHIPPED = "SHIPPED",
-//   DELIVERED = "DELIVERED",
-//   CANCELLED = "CANCELLED",
-// }
-
-// export interface OrderItemInput {
-//   productId: number;
-//   qnty: number;
-//   rate: number;
-//   net_amount: number;
-// }
-
-// export interface OrderInput {
-//   comId: number;
-//   items: OrderItemInput[];
-//   total_amount: number;
-//   discounted_amount?: number;
-//   del_charge_amount?: number;
-//   tax_amount_b_coins?: number;
-//   payment_mode: string;
-//   delivery_date?: string;
-//   coinsToRedeem?: number;
-// }
-
-// export class OrderRepository {
-//   private enrichOrder(order: any) {
-//     if (!order) return null;
-
-//     if (order.orderDetails && Array.isArray(order.orderDetails)) {
-//       order.orderDetails = order.orderDetails.map((item: any) => {
-//         const mainImg = getProductMainImage(item.product) || "";
-//         return {
-//           ...item,
-//           productName: item.product?.productName || "",
-//           productImage: mainImg,
-//           image: mainImg,
-//         };
-//       });
-
-//       if (order.orderDetails.length > 0) {
-//         const first = order.orderDetails[0];
-//         order.productName = order.productName || first.productName;
-//         order.productImage = order.productImage || first.productImage;
-//         order.image = order.image || first.productImage;
-//       }
-//     }
-
-//     return order;
-//   }
-
-//   async createOrder(data: OrderInput) {
-//     const lastOrder = await prisma.x8_app_orders_master.findFirst({
-//       orderBy: { id: "desc" },
-//       select: { id: true },
-//     });
-
-//     const nextId = (lastOrder?.id || 0) + 1;
-//     const orderId = `BM00${nextId}`;
-
-//     return await prisma.$transaction(async (tx: any) => {
-//       let finalDiscount = data.discounted_amount || 0;
-
-//       // ✅ Wallet redemption using ES import
-//       if (data.coinsToRedeem && data.coinsToRedeem > 0) {
-//         const walletService = new WalletService();
-//         const redeemed = await walletService.redeemCoins(
-//           data.comId,
-//           orderId,
-//           data.coinsToRedeem,
-//           data.total_amount,
-//           tx,
-//         );
-//         finalDiscount += redeemed;
-//       }
-
-//       const order = await tx.x8_app_orders_master.create({
-//         data: {
-//           order_id: orderId,
-//           comId: data.comId,
-//           total_amount: new Prisma.Decimal(data.total_amount),
-//           discounted_amount: new Prisma.Decimal(finalDiscount),
-//           del_charge_amount: data.del_charge_amount
-//             ? new Prisma.Decimal(data.del_charge_amount)
-//             : new Prisma.Decimal(0),
-//           tax_amount_b_coins: data.tax_amount_b_coins
-//             ? new Prisma.Decimal(data.tax_amount_b_coins)
-//             : new Prisma.Decimal(0),
-//           net_amount_payment_mode: data.payment_mode,
-//           status: OrderStatus.PENDING,
-//         },
-//         include: {
-//           orderDetails: {
-//             include: {
-//               product: {
-//                 select: {
-//                   productName: true,
-//                   proimg: true,
-//                   images: { select: { proimgs: true }, take: 1 },
-//                 },
-//               },
-//             },
-//           },
-//         },
-//       });
-
-//       await tx.x9_app_order_details.createMany({
-//         data: data.items.map((item) => ({
-//           order_id: orderId,
-//           product_id: item.productId,
-//           qnty: item.qnty,
-//           rate: new Prisma.Decimal(item.rate),
-//           net_amount: new Prisma.Decimal(item.net_amount),
-//           comId: data.comId,
-//         })),
-//       });
-
-//       await tx.$executeRaw`
-//         INSERT INTO x10_app_order_status
-//           (order_id, order_status, com_id)
-//         VALUES
-//           (${orderId}, ${OrderStatus.PENDING}, ${data.comId ?? null})
-//       `;
-
-//       const finalOrder = await tx.x8_app_orders_master.findUnique({
-//         where: { order_id: orderId },
-//         include: {
-//           orderDetails: {
-//             include: {
-//               product: {
-//                 select: {
-//                   productName: true,
-//                   proimg: true,
-//                   images: { select: { proimgs: true }, take: 1 },
-//                 },
-//               },
-//             },
-//           },
-//         },
-//       });
-
-//       await tx.x5_app_cart.updateMany({
-//         where: { comId: data.comId, isDeleted: false },
-//         data: { isDeleted: true },
-//       });
-
-//       return this.enrichOrder(finalOrder);
-//     });
-//   }
-
-//   // The rest of the methods can stay the same — no more `require()` usage
-// }

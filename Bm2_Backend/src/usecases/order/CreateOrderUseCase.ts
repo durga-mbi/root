@@ -23,14 +23,22 @@ export const createOrderUseCase = async (data: OrderInput) => {
   //   Validate Items
   for (const item of data.items) {
     /** ---------------- PRODUCT CHECK ---------------- */
+    // item.productId from frontend is actually the PK 'id'
     const product = await orderRepo.getProductById(item.productId);
 
     if (!product) {
       throw AppError.notFound(`Product with ID ${item.productId} not found`);
     }
 
+    // Resolve the actual Unique productId for the database relation
+    const actualProductId = product.productId || item.productId;
+    
+    // Update the item in the data object so OrderRepository saves the correct foreign key
+    item.productId = actualProductId as number;
+
     /** ---------------- STOCK CHECK ---------------- */
-    const stock = await orderRepo.getShopStockItem(item.productId);
+    // Pass the PK 'id' to getShopStockItem as it now handles the mapping internally
+    const stock = await orderRepo.getShopStockItem(product.id);
 
     if (!stock) {
       throw AppError.notFound(
