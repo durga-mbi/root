@@ -95,7 +95,7 @@ model ProductRegister {
   productId      Int?                                @unique(map: "product_id") @map("product_id")
   categoryId     Int?                                @map("cat_id")
   category       Category?                           @relation(fields: [categoryId], references: [id])
-  price          Float?                              @map("entry_onlinerate")
+  
   productName    String?                             @map("product_name") @db.VarChar(255)
   newProtype     String?                             @map("new_protype") @db.VarChar(100)
   displaySection String?                             @map("display_section") @db.VarChar(100)

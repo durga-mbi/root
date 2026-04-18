@@ -1,6 +1,5 @@
 import prisma from "../../../prisma-client";
 import {
-  ProductRegister as PrismaProductRegister,
   x1_app_product_register_is_display,
   caa1_shop_stock_item_db_status,
 } from "@prisma/client";
@@ -11,37 +10,56 @@ export interface CursorPaginationResult<T> {
   totalCount: number;
 }
 
+//////////////////////////////////////////////////////
+// ✅ COMMON MAPPER (ADD THIS)
+//////////////////////////////////////////////////////
+
+const mapProductWithPrice = (item: any) => {
+  const stock = item.stockItems?.[0];
+
+  return {
+    ...item,
+    price: stock?.entry_onlinerate || stock?.saleRate || 0,
+  };
+};
+
+//////////////////////////////////////////////////////
+// GET PRODUCT BY ID
+//////////////////////////////////////////////////////
+
 export const getProductRegisterById = async (
   id: number,
 ): Promise<any | null> => {
-  return prisma.productRegister.findFirst({
+  const product = await prisma.productRegister.findFirst({
     where: { id, isDisplay: x1_app_product_register_is_display.ONE },
     include: {
       images: true,
       stockItems: {
         where: { status: caa1_shop_stock_item_db_status.ONE },
+        take: 1,
       },
     },
   });
+
+  if (!product) return null;
+
+  return mapProductWithPrice(product);
 };
+
+//////////////////////////////////////////////////////
+// RELATED PRODUCTS
+//////////////////////////////////////////////////////
 
 export const getRelatedProducts = async (
   currentProductId: number,
   categoryId?: number,
   limit: number = 10,
 ): Promise<any[]> => {
-  return prisma.productRegister.findMany({
+  const products = await prisma.productRegister.findMany({
     where: {
       id: { not: currentProductId },
       isDisplay: x1_app_product_register_is_display.ONE,
-      stockItems: categoryId
-        ? {
-          some: {
-            categoryId: categoryId,
-            status: caa1_shop_stock_item_db_status.ONE,
-          },
-        }
-        : undefined,
+      ...(categoryId && { categoryId }),
     },
     include: {
       images: true,
@@ -53,14 +71,20 @@ export const getRelatedProducts = async (
     take: limit,
     orderBy: { createdAt: "desc" },
   });
+
+  return products.map(mapProductWithPrice);
 };
+
+//////////////////////////////////////////////////////
+// ALL PRODUCTS (PAGINATION)
+//////////////////////////////////////////////////////
 
 export const getAllProductRegisters = async (
   limit: number = 20,
   cursor?: number,
 ): Promise<CursorPaginationResult<any>> => {
   const take = limit + 1;
-  const where: any = { isDisplay: x1_app_product_register_is_display.ONE };
+  const where = { isDisplay: x1_app_product_register_is_display.ONE };
 
   const [products, totalCount] = await Promise.all([
     prisma.productRegister.findMany({
@@ -80,11 +104,18 @@ export const getAllProductRegisters = async (
 
   const hasMore = products.length > limit;
   const data = hasMore ? products.slice(0, limit) : products;
+
   const nextCursor =
     hasMore && data.length > 0 ? data[data.length - 1].id : null;
 
-  return { data, nextCursor, totalCount };
+  const formattedData = data.map(mapProductWithPrice);
+
+  return { data: formattedData, nextCursor, totalCount };
 };
+
+//////////////////////////////////////////////////////
+// FILTERED PRODUCTS
+//////////////////////////////////////////////////////
 
 export const getFilteredProducts = async (
   filters: {
@@ -103,30 +134,23 @@ export const getFilteredProducts = async (
     isDisplay: x1_app_product_register_is_display.ONE,
   };
 
-  // search
   if (filters.q) {
     where.productName = { contains: filters.q };
   }
 
-  // ✅ FIXED: category filter MUST be here
   if (filters.categoryId !== undefined) {
     where.categoryId = Number(filters.categoryId);
   }
 
-  // rating filter
   if (filters.rating !== undefined) {
     where.ratings = { gte: filters.rating };
   }
 
-  // stock filters (ONLY price + status)
   const stockWhere: any = {
     status: caa1_shop_stock_item_db_status.ONE,
   };
 
-  let hasStockFilter = false;
-
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
-    hasStockFilter = true;
     stockWhere.saleRate = {};
 
     if (filters.minPrice !== undefined) {
@@ -136,11 +160,7 @@ export const getFilteredProducts = async (
     if (filters.maxPrice !== undefined) {
       stockWhere.saleRate.lte = filters.maxPrice;
     }
-  }
 
-  // ❌ REMOVED: category from stockItems (WRONG)
-
-  if (hasStockFilter) {
     where.stockItems = { some: stockWhere };
   }
 
@@ -157,7 +177,6 @@ export const getFilteredProducts = async (
       orderBy: { id: "desc" },
       take,
     }),
-
     prisma.productRegister.count({ where }),
   ]);
 
@@ -167,8 +186,14 @@ export const getFilteredProducts = async (
   const nextCursor =
     hasMore && data.length > 0 ? data[data.length - 1].id : null;
 
-  return { data, nextCursor, totalCount };
+  const formattedData = data.map(mapProductWithPrice);
+
+  return { data: formattedData, nextCursor, totalCount };
 };
+
+//////////////////////////////////////////////////////
+// NEW ARRIVALS
+//////////////////////////////////////////////////////
 
 export const getNewArrivals = async (
   limit: number = 20,
@@ -195,11 +220,18 @@ export const getNewArrivals = async (
 
   const hasMore = products.length > limit;
   const data = hasMore ? products.slice(0, limit) : products;
+
   const nextCursor =
     hasMore && data.length > 0 ? data[data.length - 1].id : null;
 
-  return { data, nextCursor, totalCount };
+  const formattedData = data.map(mapProductWithPrice);
+
+  return { data: formattedData, nextCursor, totalCount };
 };
+
+//////////////////////////////////////////////////////
+// DISPLAY SECTION
+//////////////////////////////////////////////////////
 
 export const getProductRegistersByDisplaySection = async (
   displaySection: string,
@@ -207,9 +239,10 @@ export const getProductRegistersByDisplaySection = async (
   cursor?: number,
 ): Promise<CursorPaginationResult<any>> => {
   const take = limit + 1;
+
   const where = {
     isDisplay: x1_app_product_register_is_display.ONE,
-    displaySection: displaySection,
+    displaySection,
   };
 
   const [products, totalCount] = await Promise.all([
@@ -230,18 +263,24 @@ export const getProductRegistersByDisplaySection = async (
 
   const hasMore = products.length > limit;
   const data = hasMore ? products.slice(0, limit) : products;
+
   const nextCursor =
     hasMore && data.length > 0 ? data[data.length - 1].id : null;
 
-  return { data, nextCursor, totalCount };
+  const formattedData = data.map(mapProductWithPrice);
+
+  return { data: formattedData, nextCursor, totalCount };
 };
+
+//////////////////////////////////////////////////////
+// SEARCH
+//////////////////////////////////////////////////////
 
 export const searchProductRegistersByName = async (
   searchTerm: string,
   limit?: number,
 ): Promise<any[]> => {
-  const queryLimit = limit && limit > 0 ? Math.floor(limit) : undefined;
-  return prisma.productRegister.findMany({
+  const products = await prisma.productRegister.findMany({
     where: {
       isDisplay: x1_app_product_register_is_display.ONE,
       productName: { contains: searchTerm },
@@ -254,6 +293,8 @@ export const searchProductRegistersByName = async (
       },
     },
     orderBy: { createdAt: "desc" },
-    ...(queryLimit && { take: queryLimit }),
+    ...(limit && { take: limit }),
   });
+
+  return products.map(mapProductWithPrice);
 };
