@@ -8,14 +8,15 @@ const cartRepository = new CartRepository();
 
 // ---------------- Helper ----------------
 const enrichCartItem = (item: any) => {
-  const price = item.product?.stockItems?.[0]?.saleRate || 0;
+  // const price = item.product?.stockItems?.[0]?.saleRate || 0;
+  const price = item.product?.stockItems?.[0]?.saleRate;
   const itemTotal = price * item.quantity;
   const mainImage = getProductMainImage(item.product);
 
   return {
     cartId: item.cartId,
     id: item.product?.id,
-    productId: item.productId,
+    productId: item.ProductId,
     productName: item.product?.productName,
     productImage: mainImage,
     image: mainImage,
@@ -24,7 +25,6 @@ const enrichCartItem = (item: any) => {
     itemTotal: Number(itemTotal.toFixed(2)),
   };
 };
-
 
 // ---------------- Add to Cart ----------------
 export const addToCart = async (
@@ -39,17 +39,16 @@ export const addToCart = async (
       const customer = await prisma.customer.findUnique({
         where: { id: req.user!.id },
       });
-      comId = customer?.comId;
+      comId = customer?.comId || req.user!.id;
     }
 
     if (!comId) {
-      res.status(401).json({
+      res.status(500).json({
         success: false,
-        message: "User identity (comId) could not be verified. Please log in again.",
+        message: "User identity could not be verified",
       });
       return;
     }
-
 
     let productId = req.body.productId || req.body.ItemId;
     const quantity = req.body.quantity;
@@ -93,7 +92,8 @@ export const addToCart = async (
         await prisma.shopStockItem.create({
           data: {
             barCode: barcode,
-            productId: product.productId,
+            // productId: product.productId,
+            productId: product.id,
             itemName: productName,
             saleRate: mrp,
             brandName: brandMatch?.[1]?.trim(),
@@ -102,7 +102,8 @@ export const addToCart = async (
           },
         });
 
-        productId = product.productId;
+        // productId = product.productId;
+        productId = product.id;
       }
     }
 
@@ -154,17 +155,16 @@ export const getCart = async (
       const customer = await prisma.customer.findUnique({
         where: { id: req.user!.id },
       });
-      comId = customer?.comId;
+      comId = customer?.comId || req.user!.id;
     }
 
     if (!comId) {
-      res.status(401).json({
+      res.status(500).json({
         success: false,
-        message: "User identity (comId) could not be verified. Please log in again.",
+        message: "User identity could not be verified",
       });
       return;
     }
-
 
     const items = await cartRepository.getCartByComId(comId);
 
@@ -201,17 +201,16 @@ export const updateCartQuantity = async (
       const customer = await prisma.customer.findUnique({
         where: { id: req.user!.id },
       });
-      comId = customer?.comId;
+      comId = customer?.comId || req.user!.id;
     }
 
     if (!comId) {
-      res.status(401).json({
+      res.status(500).json({
         success: false,
-        message: "User identity (comId) could not be verified. Please log in again.",
+        message: "User identity could not be verified",
       });
       return;
     }
-
 
     const itemId = Number(req.params.itemId);
     const { quantity } = req.body;
@@ -261,17 +260,16 @@ export const removeFromCart = async (
       const customer = await prisma.customer.findUnique({
         where: { id: req.user!.id },
       });
-      comId = customer?.comId;
+      comId = customer?.comId || req.user!.id;
     }
 
     if (!comId) {
-      res.status(401).json({
+      res.status(500).json({
         success: false,
-        message: "User identity (comId) could not be verified. Please log in again.",
+        message: "User identity could not be verified",
       });
       return;
     }
-
 
     const itemId = Number(req.params.itemId);
 
@@ -307,17 +305,16 @@ export const clearCart = async (
       const customer = await prisma.customer.findUnique({
         where: { id: req.user!.id },
       });
-      comId = customer?.comId;
+      comId = customer?.comId || req.user!.id;
     }
 
     if (!comId) {
-      res.status(401).json({
+      res.status(500).json({
         success: false,
-        message: "User identity (comId) could not be verified. Please log in again.",
+        message: "User identity could not be verified",
       });
       return;
     }
-
 
     await cartRepository.clearCart(comId);
 

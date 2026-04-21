@@ -90,12 +90,12 @@ model Category {
 // PRODUCT REGISTER
 //////////////////////////////////////////////////////
 model ProductRegister {
-  id             Int                                 @id @default(autoincrement())
-  comId          Int?                                @map("com_id")
-  productId      Int?                                @unique(map: "product_id") @map("product_id")
-  categoryId     Int?                                @map("cat_id")
-  category       Category?                           @relation(fields: [categoryId], references: [id])
-  
+  id         Int       @id @default(autoincrement())
+  comId      Int?      @map("com_id")
+  productId  Int?      @unique(map: "product_id") @map("product_id")
+  categoryId Int?      @map("cat_id")
+  category   Category? @relation(fields: [categoryId], references: [id])
+
   productName    String?                             @map("product_name") @db.VarChar(255)
   newProtype     String?                             @map("new_protype") @db.VarChar(100)
   displaySection String?                             @map("display_section") @db.VarChar(100)
@@ -237,10 +237,10 @@ model ShopStockItem {
   gstper   Int?
   pur_rate Float? @db.Float
 
-  mrpRate  String? @map("mrp_rate") @db.VarChar(20)
-  saleRate Float?  @map("sale_rate") @db.Float
-
-  markupamt Float @default(0)
+  mrpRate    String? @map("mrp_rate") @db.VarChar(20)
+  saleRate   Float?  @map("sale_rate") @db.Float
+  onlineRate Float?  @map("online_rate") @db.Float
+  markupamt  Float   @default(0)
 
   entry_meter         Float? @default(0)
   entry_qty           Float? @default(0)
