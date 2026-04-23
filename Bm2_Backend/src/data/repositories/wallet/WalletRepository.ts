@@ -100,6 +100,17 @@ export class WalletRepository {
         status: "PENDING",
         creditDate: { lte: new Date() },
       },
+      select: {
+        id: true,
+        userId: true,
+        orderId: true,
+        type: true,
+        amount: true,
+        status: true,
+        processedAt: true,
+        configSnapshot: true,
+        createdAt: true
+      },
       take: batchSize,
       orderBy: { id: "asc" },
     });

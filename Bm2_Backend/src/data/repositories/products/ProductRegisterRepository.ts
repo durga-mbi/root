@@ -1,8 +1,6 @@
 import prisma from "../../../prisma-client";
 import {
-  ProductRegister as PrismaProductRegister,
   x1_app_product_register_is_display,
-  caa1_shop_stock_item_db_status,
 } from "@prisma/client";
 
 export interface CursorPaginationResult<T> {
@@ -19,7 +17,7 @@ export const getProductRegisterById = async (
     include: {
       images: true,
       stockItems: {
-        where: { status: caa1_shop_stock_item_db_status.ONE },
+        where: { status: "ONE" },
       },
     },
   });
@@ -38,7 +36,7 @@ export const getRelatedProducts = async (
         ? {
           some: {
             categoryId: categoryId,
-            status: caa1_shop_stock_item_db_status.ONE,
+            status: "ONE",
           },
         }
         : undefined,
@@ -46,8 +44,23 @@ export const getRelatedProducts = async (
     include: {
       images: true,
       stockItems: {
-        where: { status: caa1_shop_stock_item_db_status.ONE },
-        take: 1,
+        where: { status: "ONE" },
+        select: {
+          id: true,
+          shopId: true,
+          productId: true,
+          categoryId: true,
+          itemName: true,
+          itemCode: true,
+          barCode: true,
+          saleRate: true,
+          onlineRate: true,
+          mrpRate: true,
+          curQty: true,
+          catName: true,
+          gstper: true,
+          pur_rate: true
+        }
       },
     },
     take: limit,
@@ -68,8 +81,23 @@ export const getAllProductRegisters = async (
       include: {
         images: true,
         stockItems: {
-          where: { status: caa1_shop_stock_item_db_status.ONE },
-          take: 1,
+          where: { status: "ONE" },
+          select: {
+            id: true,
+            shopId: true,
+            productId: true,
+            categoryId: true,
+            itemName: true,
+            itemCode: true,
+            barCode: true,
+            saleRate: true,
+            onlineRate: true,
+            mrpRate: true,
+            curQty: true,
+            catName: true,
+            gstper: true,
+            pur_rate: true
+          }
         },
       },
       orderBy: { id: "desc" },
@@ -80,10 +108,45 @@ export const getAllProductRegisters = async (
 
   const hasMore = products.length > limit;
   const data = hasMore ? products.slice(0, limit) : products;
-  const nextCursor =
-    hasMore && data.length > 0 ? data[data.length - 1].id : null;
 
-  return { data, nextCursor, totalCount };
+  // Enrichment Fallback
+  const enrichedData = await Promise.all(
+    data.map(async (product: any) => {
+      if (!product.stockItems || product.stockItems.length === 0) {
+        const stocks = await prisma.shopStockItem.findMany({
+          where: {
+            OR: [
+              { productId: product.productId },
+              { itemName: product.productName }
+            ]
+          },
+          select: {
+            id: true,
+            shopId: true,
+            productId: true,
+            categoryId: true,
+            itemName: true,
+            itemCode: true,
+            barCode: true,
+            saleRate: true,
+            onlineRate: true,
+            mrpRate: true,
+            curQty: true,
+            catName: true,
+            gstper: true,
+            pur_rate: true
+          }
+        });
+        return { ...product, stockItems: stocks };
+      }
+      return product;
+    })
+  );
+
+  const nextCursor =
+    hasMore && enrichedData.length > 0 ? enrichedData[enrichedData.length - 1].id : null;
+
+  return { data: enrichedData, nextCursor, totalCount };
 };
 
 export const getFilteredProducts = async (
@@ -100,12 +163,15 @@ export const getFilteredProducts = async (
   const take = limit + 1;
 
   const where: any = {
-    isDisplay: x1_app_product_register_is_display.ONE,
+    // isDisplay: x1_app_product_register_is_display.ONE,
   };
 
   // search
   if (filters.q) {
-    where.productName = { contains: filters.q };
+    where.OR = [
+      { productName: { contains: filters.q } },
+      { stockItems: { some: { barCode: { contains: filters.q } } } },
+    ];
   }
 
   //  FIXED: category filter MUST be here
@@ -120,7 +186,7 @@ export const getFilteredProducts = async (
 
   // stock filters (ONLY price + status)
   const stockWhere: any = {
-    status: caa1_shop_stock_item_db_status.ONE,
+    // status: caa1_shop_stock_item_db_status.ONE,
   };
 
   let hasStockFilter = false;
@@ -150,8 +216,27 @@ export const getFilteredProducts = async (
       include: {
         images: true,
         stockItems: {
-          where: { status: caa1_shop_stock_item_db_status.ONE },
-          take: 1,
+          select: {
+            id: true,
+            shopId: true,
+            productId: true,
+            categoryId: true,
+            itemName: true,
+            itemCode: true,
+            barCode: true,
+            brandId: true,
+            brandName: true,
+            catName: true,
+            gstper: true,
+            pur_rate: true,
+            mrpRate: true,
+            saleRate: true,
+            onlineRate: true,
+            curQty: true,
+            edition: true,
+            color_name: true,
+            status: true
+          }
         },
       },
       orderBy: { id: "desc" },
@@ -164,10 +249,50 @@ export const getFilteredProducts = async (
   const hasMore = products.length > limit;
   const data = hasMore ? products.slice(0, limit) : products;
 
-  const nextCursor =
-    hasMore && data.length > 0 ? data[data.length - 1].id : null;
+  // Manual Enrichment: If stockItems are empty due to broken ID links, 
+  // fetch them by matching the product name
+  const enrichedData = await Promise.all(
+    data.map(async (product: any) => {
+      if (!product.stockItems || product.stockItems.length === 0) {
+        const stocks = await prisma.shopStockItem.findMany({
+          where: {
+            OR: [
+              { productId: product.productId },
+              { itemName: product.productName }
+            ]
+          },
+          select: {
+            id: true,
+            shopId: true,
+            productId: true,
+            categoryId: true,
+            itemName: true,
+            itemCode: true,
+            barCode: true,
+            brandId: true,
+            brandName: true,
+            catName: true,
+            gstper: true,
+            pur_rate: true,
+            mrpRate: true,
+            saleRate: true,
+            onlineRate: true,
+            curQty: true,
+            edition: true,
+            color_name: true,
+            status: true
+          }
+        });
+        return { ...product, stockItems: stocks };
+      }
+      return product;
+    })
+  );
 
-  return { data, nextCursor, totalCount };
+  const nextCursor =
+    hasMore && enrichedData.length > 0 ? enrichedData[enrichedData.length - 1].id : null;
+
+  return { data: enrichedData, nextCursor, totalCount };
 };
 
 export const getNewArrivals = async (
@@ -183,8 +308,23 @@ export const getNewArrivals = async (
       include: {
         images: true,
         stockItems: {
-          where: { status: caa1_shop_stock_item_db_status.ONE },
-          take: 1,
+          where: { status: "ONE" },
+          select: {
+            id: true,
+            shopId: true,
+            productId: true,
+            categoryId: true,
+            itemName: true,
+            itemCode: true,
+            barCode: true,
+            saleRate: true,
+            onlineRate: true,
+            mrpRate: true,
+            curQty: true,
+            catName: true,
+            gstper: true,
+            pur_rate: true
+          }
         },
       },
       orderBy: { createdAt: "desc" },
@@ -218,8 +358,23 @@ export const getProductRegistersByDisplaySection = async (
       include: {
         images: true,
         stockItems: {
-          where: { status: caa1_shop_stock_item_db_status.ONE },
-          take: 1,
+          where: { status: "ONE" },
+          select: {
+            id: true,
+            shopId: true,
+            productId: true,
+            categoryId: true,
+            itemName: true,
+            itemCode: true,
+            barCode: true,
+            saleRate: true,
+            onlineRate: true,
+            mrpRate: true,
+            curQty: true,
+            catName: true,
+            gstper: true,
+            pur_rate: true
+          }
         },
       },
       orderBy: { id: "desc" },
@@ -249,8 +404,23 @@ export const searchProductRegistersByName = async (
     include: {
       images: true,
       stockItems: {
-        where: { status: caa1_shop_stock_item_db_status.ONE },
-        take: 1,
+        where: { status: "ONE" },
+        select: {
+          id: true,
+          shopId: true,
+          productId: true,
+          categoryId: true,
+          itemName: true,
+          itemCode: true,
+          barCode: true,
+          saleRate: true,
+          onlineRate: true,
+          mrpRate: true,
+          curQty: true,
+          catName: true,
+          gstper: true,
+          pur_rate: true
+        }
       },
     },
     orderBy: { createdAt: "desc" },

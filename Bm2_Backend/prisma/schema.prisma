@@ -381,7 +381,7 @@ model x5_app_cart {
   comId     Int      @map("com_id")
 
   customer Customer        @relation(fields: [comId], references: [comId])
-  product  ProductRegister @relation(fields: [productId], references: [id])
+  product  ProductRegister? @relation(fields: [productId], references: [productId])
 
   @@unique([comId, productId], name: "comId_productId")
   @@index([productId], map: "x5_app_cart_product_id_fkey")

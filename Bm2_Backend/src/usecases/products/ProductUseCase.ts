@@ -173,23 +173,33 @@ import AppError from "../../errors/AppError";
 import { getProductMainImage } from "../../utils/product-image";
 
 // Transform product safely
-const transformProduct = (product: any) => {
-  const stockItems = Array.isArray(product?.stockItems)
-    ? product.stockItems
-    : [];
+const transformProduct = (product: any, searchTerm?: string) => {
+  console.log(`[Debug] Transforming product: ${product?.id} - ${product?.productName}`);
+  let stockItems = Array.isArray(product?.stockItems) ? product.stockItems : [];
 
   const variants = stockItems.map((item: any) => ({
     id: item.id,
     sku: item.barCode,
     size: item.edition,
     color: item.color_name,
-    price: item.saleRate || 0,
-    mrp: item.mrpRate ? parseFloat(item.mrpRate) : item.saleRate || 0,
+    price: item.onlineRate || item.saleRate || 0,
+    onlinePrice: item.onlineRate || item.saleRate || 0,
+    mrp: item.onlineRate || item.saleRate || (item.mrpRate ? parseFloat(item.mrpRate) : 0),
+    purchaseRate: item.pur_rate || 0,
+    gst: item.gstper || 0,
+    categoryName: item.catName,
     curQty: item.curQty || 0,
     inStock: (item.curQty || 0) > 0,
   }));
 
-  const primaryStock = stockItems[0];
+  // Find the stock item that matches the barcode if a search term is provided
+  let primaryStock = stockItems[0];
+  if (searchTerm) {
+    const matchingStock = stockItems.find(
+      (s: any) => s.barCode?.trim().toLowerCase() === searchTerm.trim().toLowerCase()
+    );
+    if (matchingStock) primaryStock = matchingStock;
+  }
 
   const totalQty = stockItems.reduce(
     (acc: number, item: any) => acc + (item.curQty || 0),
@@ -202,10 +212,16 @@ const transformProduct = (product: any) => {
     ...product,
     productImage: mainImage,
     image: mainImage,
-    price: primaryStock?.saleRate ?? null,
-    mrp: primaryStock?.mrpRate
+    comId: product.comId || primaryStock?.shopId,
+    categoryId: product.categoryId || primaryStock?.categoryId,
+    categoryName: primaryStock?.catName,
+    price: primaryStock?.onlineRate || primaryStock?.saleRate || 0,
+    onlinePrice: primaryStock?.onlineRate || primaryStock?.saleRate || 0,
+    mrp: primaryStock?.onlineRate || primaryStock?.saleRate || (primaryStock?.mrpRate
       ? parseFloat(primaryStock.mrpRate)
-      : primaryStock?.saleRate ?? null,
+      : 0),
+    purchaseRate: primaryStock?.pur_rate ?? 0,
+    gst: primaryStock?.gstper ?? 0,
     totalStock: totalQty,
     inStock: totalQty > 0,
     variants,
@@ -241,7 +257,7 @@ export const getNewArrivals = async (limit?: number, cursor?: any) => {
 
   return {
     ...result,
-    data: (result?.data || []).map(transformProduct),
+    data: (result?.data || []).map((p: any) => transformProduct(p)),
   };
 };
 
@@ -265,7 +281,7 @@ export const getProductsByCategorySlug = async (
 
   return {
     ...result,
-    data: (result?.data || []).map(transformProduct),
+    data: (result?.data || []).map((p: any) => transformProduct(p)),
   };
 };
 
@@ -284,7 +300,7 @@ export const getAllProductRegisters = async (
 
   return {
     ...result,
-    data: (result?.data || []).map(transformProduct),
+    data: (result?.data || []).map((p: any) => transformProduct(p)),
   };
 };
 
@@ -309,7 +325,7 @@ export const getProductDetail = async (id: number) => {
 
   return {
     product: transformedProduct,
-    relatedProducts: (related || []).map(transformProduct),
+    relatedProducts: (related || []).map((p: any) => transformProduct(p)),
   };
 };
 
@@ -336,7 +352,7 @@ export const searchProductRegistersByName = async (
       limit
     );
 
-  return (products || []).map(transformProduct);
+  return (products || []).map((p: any) => transformProduct(p, searchTerm));
 };
 
 // Filtered Products
@@ -360,6 +376,6 @@ export const getFilteredProducts = async (filters: any) => {
 
   return {
     ...result,
-    data: (result?.data || []).map(transformProduct),
+    data: (result?.data || []).map((p: any) => transformProduct(p, filters.q)),
   };
 };

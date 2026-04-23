@@ -8,20 +8,28 @@ const cartRepository = new CartRepository();
 
 // ---------------- Helper ----------------
 const enrichCartItem = (item: any) => {
-  // const price = item.product?.stockItems?.[0]?.saleRate || 0;
-  const price = item.product?.stockItems?.[0]?.saleRate;
-  const itemTotal = price * item.quantity;
+  const stock = item.product?.stockItems?.[0];
+  const onlineRate = stock?.onlineRate ?? 0;
+  const saleRate = stock?.saleRate ?? 0;
+  
+  // Use onlineRate for both price and mrp as requested
+  const price = onlineRate || saleRate || 0;
+  const mrp = onlineRate || (stock?.mrpRate ? parseFloat(stock.mrpRate) : saleRate || 0);
+
+  const itemTotal = (price || 0) * (item.quantity || 0);
   const mainImage = getProductMainImage(item.product);
 
   return {
     cartId: item.cartId,
     id: item.product?.id,
-    productId: item.ProductId,
+    productId: item.productId,
     productName: item.product?.productName,
     productImage: mainImage,
     image: mainImage,
     quantity: item.quantity,
     price: price,
+    mrp: mrp,
+    onlinePrice: onlineRate,
     itemTotal: Number(itemTotal.toFixed(2)),
   };
 };
@@ -33,22 +41,12 @@ export const addToCart = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    let comId = req.user!.comId;
+    // Default to comId 1 if not logged in (for testing)
+    const user = req.user;
+    let comId = user?.comId || 1; 
 
-    if (!comId) {
-      const customer = await prisma.customer.findUnique({
-        where: { id: req.user!.id },
-      });
-      comId = customer?.comId || req.user!.id;
-    }
-
-    if (!comId) {
-      res.status(500).json({
-        success: false,
-        message: "User identity could not be verified",
-      });
-      return;
-    }
+    // We no longer block if user is missing for now as requested
+    if (!comId) comId = 1;
 
     let productId = req.body.productId || req.body.ItemId;
     const quantity = req.body.quantity;
@@ -68,8 +66,9 @@ export const addToCart = async (
 
       const barcode = barcodeMatch[1];
 
-      let stock = await prisma.shopStockItem.findFirst({
+      const stock = await prisma.shopStockItem.findFirst({
         where: { barCode: barcode },
+        select: { productId: true }, // Avoid invalid indate values
       });
 
       if (stock && stock.productId) {
@@ -77,33 +76,41 @@ export const addToCart = async (
       } else {
         const nameMatch = text.match(/^(.+?)\s*\(/);
         const mrpMatch = text.match(/MRP:\s*(\d+)/);
+        const priceMatch = text.match(/Price:\s*(\d+)/);
         const brandMatch = text.match(/Brand:\s*([^|]+)/);
         const designMatch = text.match(/Design:\s*([^|]+)/);
 
         const productName = nameMatch?.[1]?.trim() || "Unknown Product";
         const mrp = Number(mrpMatch?.[1] || 0);
+        const price = Number(priceMatch?.[1] || mrp); // Default to MRP if Price not found
 
-        const product = await prisma.productRegister.create({
+        const tempProductId = Math.floor(Date.now() / 1000);
+
+        // ✅ Create ProductRegister
+        await prisma.productRegister.create({
           data: {
-            productName,
+            productName: productName,
+            productId: tempProductId,
           },
         });
 
+        // ✅ Create ShopStockItem
         await prisma.shopStockItem.create({
           data: {
             barCode: barcode,
-            // productId: product.productId,
-            productId: product.id,
+            productId: tempProductId,
             itemName: productName,
-            saleRate: mrp,
+            saleRate: price,
+            onlineRate: price,
+            mrpRate: mrp.toString(),
             brandName: brandMatch?.[1]?.trim(),
             design_name: designMatch?.[1]?.trim(),
             indate: new Date(),
+            status: "ONE",
           },
         });
 
-        // productId = product.productId;
-        productId = product.id;
+        productId = tempProductId;
       }
     }
 
@@ -132,10 +139,14 @@ export const addToCart = async (
       numQuantity,
     );
 
+    // Fetch the full enriched item separately to avoid the previous crash
+    const cartItems = await cartRepository.getCartByComId(comId);
+    const addedItem = cartItems.find((i: any) => Number(i.productId) === Number(numProductId));
+
     res.status(200).json({
       success: true,
       message: "Item added to cart successfully",
-      data: enrichCartItem(result),
+      data: enrichCartItem(addedItem || result),
     });
   } catch (error) {
     next(error);
@@ -149,22 +160,8 @@ export const getCart = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    let comId = req.user!.comId;
-
-    if (!comId) {
-      const customer = await prisma.customer.findUnique({
-        where: { id: req.user!.id },
-      });
-      comId = customer?.comId || req.user!.id;
-    }
-
-    if (!comId) {
-      res.status(500).json({
-        success: false,
-        message: "User identity could not be verified",
-      });
-      return;
-    }
+    const user = req.user;
+    const comId = user?.comId || 1; 
 
     const items = await cartRepository.getCartByComId(comId);
 
@@ -195,22 +192,8 @@ export const updateCartQuantity = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    let comId = req.user!.comId;
-
-    if (!comId) {
-      const customer = await prisma.customer.findUnique({
-        where: { id: req.user!.id },
-      });
-      comId = customer?.comId || req.user!.id;
-    }
-
-    if (!comId) {
-      res.status(500).json({
-        success: false,
-        message: "User identity could not be verified",
-      });
-      return;
-    }
+    const user = req.user;
+    const comId = user?.comId || 1;
 
     const itemId = Number(req.params.itemId);
     const { quantity } = req.body;
@@ -254,22 +237,8 @@ export const removeFromCart = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    let comId = req.user!.comId;
-
-    if (!comId) {
-      const customer = await prisma.customer.findUnique({
-        where: { id: req.user!.id },
-      });
-      comId = customer?.comId || req.user!.id;
-    }
-
-    if (!comId) {
-      res.status(500).json({
-        success: false,
-        message: "User identity could not be verified",
-      });
-      return;
-    }
+    const user = req.user;
+    const comId = user?.comId || 1;
 
     const itemId = Number(req.params.itemId);
 
@@ -299,22 +268,8 @@ export const clearCart = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    let comId = req.user!.comId;
-
-    if (!comId) {
-      const customer = await prisma.customer.findUnique({
-        where: { id: req.user!.id },
-      });
-      comId = customer?.comId || req.user!.id;
-    }
-
-    if (!comId) {
-      res.status(500).json({
-        success: false,
-        message: "User identity could not be verified",
-      });
-      return;
-    }
+    const user = req.user;
+    const comId = user?.comId || 1;
 
     await cartRepository.clearCart(comId);
 
