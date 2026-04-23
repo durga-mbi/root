@@ -259,11 +259,11 @@ model ShopStockItem {
   item_remarks String?                        @db.Text
   bill_comment String?                        @db.Text
 
-  indate      DateTime @db.Date
-  insert_date String?  @db.VarChar(40)
-  insert_user String?  @db.VarChar(120)
-  update_date String?  @db.VarChar(40)
-  update_user String?  @db.VarChar(120)
+  indate      DateTime? @db.Date
+  insert_date String?   @db.VarChar(40)
+  insert_user String?   @db.VarChar(120)
+  update_date String?   @db.VarChar(40)
+  update_user String?   @db.VarChar(120)
 
   product ProductRegister? @relation(fields: [productId], references: [productId])
 
@@ -380,7 +380,7 @@ model x5_app_cart {
   cartId    Int      @id @default(autoincrement()) @map("cart_id")
   comId     Int      @map("com_id")
 
-  customer Customer        @relation(fields: [comId], references: [comId])
+  customer Customer         @relation(fields: [comId], references: [comId])
   product  ProductRegister? @relation(fields: [productId], references: [productId])
 
   @@unique([comId, productId], name: "comId_productId")

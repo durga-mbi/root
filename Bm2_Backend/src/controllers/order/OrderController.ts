@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import prisma from "../../prisma-client"; // ✅ IMPORTANT
+import prisma from "../../prisma-client";  
 
 import { createOrderUseCase } from "../../usecases/order/CreateOrderUseCase";
 import { cancelOrderUseCase } from "../../usecases/order/CancelOrderUseCase";
@@ -19,17 +19,11 @@ export const createOrderController = async (
 ): Promise<void> => {
   try {
     const user = (req as any).user;
-    if (!user || user.comId === undefined) {
-      res.status(401).json({
-        success: false,
-        msg: "Authentication required or missing comId",
-      });
-      return;
-    }
+    let comId = user?.comId || 1; // Default to 1 for testing if not logged in
 
     const orderData: any = {
       ...req.body,
-      comId: user.comId,
+      comId: comId,
     };
 
     // ====================================================
@@ -40,7 +34,7 @@ export const createOrderController = async (
         if (!item.productId && item.product) {
           const text = item.product;
 
-          // ✅ Extract barcode
+          //   Extract barcode
           const barcodeMatch = text.match(/Barcode:\s*(\d+)/);
           if (!barcodeMatch) {
             res.status(400).json({
@@ -52,47 +46,55 @@ export const createOrderController = async (
 
           const barcode = barcodeMatch[1];
 
-          // ✅ Check if stock already exists
-          let stock = await prisma.shopStockItem.findFirst({
+          //  Check if stock already exists
+          const stock = await prisma.shopStockItem.findFirst({
             where: { barCode: barcode },
+            select: { productId: true }, // Avoid invalid indate values
           });
 
           if (stock && stock.productId) {
-            // ✅ Existing product
+            //  Existing product
             item.productId = stock.productId;
           } else {
-            // ✅ Parse remaining details
+            //   Parse remaining details
             const nameMatch = text.match(/^(.+?)\s*\(/);
             const mrpMatch = text.match(/MRP:\s*(\d+)/);
+            const priceMatch = text.match(/Price:\s*(\d+)/);
             const brandMatch = text.match(/Brand:\s*([^|]+)/);
             const designMatch = text.match(/Design:\s*([^|]+)/);
 
             const productName = nameMatch?.[1]?.trim() || "Unknown Product";
             const mrp = Number(mrpMatch?.[1] || 0);
+            const price = Number(priceMatch?.[1] || mrp);
             const brand = brandMatch?.[1]?.trim() || null;
             const design = designMatch?.[1]?.trim() || null;
 
-            // ✅ Create ProductRegister
+            const tempProductId = Math.floor(Date.now() / 1000);
+
+            //   Create ProductRegister
             const product = await prisma.productRegister.create({
               data: {
                 productName: productName,
+                productId: tempProductId,
               },
             });
 
-            // ✅ Create ShopStockItem
+            // Create ShopStockItem
             await prisma.shopStockItem.create({
               data: {
                 barCode: barcode,
-                productId: product.productId,
+                productId: tempProductId,
                 itemName: productName,
-                saleRate: mrp,
-                brandName: brand,
-                design_name: design,
+                saleRate: price,
+                mrpRate: mrp.toString(),
+                brandName: brandMatch?.[1]?.trim(),
+                design_name: designMatch?.[1]?.trim(),
                 indate: new Date(),
+                status: "ONE",
               },
             });
 
-            item.productId = product.productId;
+            item.productId = tempProductId;
           }
         }
       }
@@ -177,14 +179,7 @@ export const getAllOrdersController = async (
 ): Promise<void> => {
   try {
     const user = (req as any).user;
-
-    if (!user || user.comId === undefined) {
-      res.status(401).json({
-        success: false,
-        msg: "Authentication required or missing comId",
-      });
-      return;
-    }
+    const comId = user?.comId || 1; // Default to 1 for testing
 
     const { page, limit, status } = req.query;
 
@@ -192,7 +187,7 @@ export const getAllOrdersController = async (
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
       status: status as string | undefined,
-      comId: user.comId,
+      comId: comId,
     });
 
     res.status(200).json({

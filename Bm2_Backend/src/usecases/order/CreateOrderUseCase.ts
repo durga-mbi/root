@@ -47,7 +47,7 @@ export const createOrderUseCase = async (data: OrderInput) => {
     }
 
     /** ---------------- RATE VALIDATION ---------------- */
-    const expectedRate = Number(stock.saleRate ?? stock.mrpRate ?? 0);
+    const expectedRate = Number(stock.onlineRate ?? stock.saleRate ?? stock.mrpRate ?? 0);
 
     const isProd = config.env === "production";
 

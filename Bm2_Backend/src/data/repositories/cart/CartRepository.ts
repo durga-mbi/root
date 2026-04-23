@@ -27,7 +27,6 @@ export class CartRepository {
         data: {
           quantity: existing.quantity + quantity,
         },
-        include: includeOptions,
       });
     }
 
@@ -41,7 +40,6 @@ export class CartRepository {
           quantity,
           isDeleted: false,
         },
-        include: includeOptions,
       });
     }
 
@@ -53,29 +51,131 @@ export class CartRepository {
         quantity,
         isDeleted: false,
       },
-      include: includeOptions,
     });
   }
 
   // ---------------- Get Cart ----------------
   async getCartByComId(comId: number) {
-    return prisma.x5_app_cart.findMany({
+    const cartItems = await prisma.x5_app_cart.findMany({
       where: {
         comId,
         isDeleted: false,
       },
+    });
+
+    // Fetch products separately to avoid "required field" crashes on broken data
+    const enrichedItems = await Promise.all(
+      cartItems.map(async (item) => {
+        const product = await this.getProductWithStock(item.productId);
+        return { ...item, product };
+      }),
+    );
+
+    return enrichedItems;
+  }
+
+  private async getProductWithStock(productId: number) {
+    // 1. Try finding by internal ID first (convention in this repo)
+    let product = await prisma.productRegister.findUnique({
+      where: { id: productId },
       include: {
-        product: {
-          include: {
-            images: { select: { proimgs: true }, take: 1 },
-            stockItems: { where: { status: "ONE" },
-            orderBy: { id: "desc" },
-             take: 1 
-            },
+        images: { select: { proimgs: true }, take: 1 },
+        stockItems: {
+          orderBy: { id: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            shopId: true,
+            productId: true,
+            categoryId: true,
+            itemName: true,
+            itemCode: true,
+            barCode: true,
+            saleRate: true,
+            onlineRate: true,
+            mrpRate: true,
+            curQty: true,
+            catName: true,
+            gstper: true,
+            pur_rate: true,
           },
         },
       },
     });
+
+    // 2. If not found by ID, try finding by business productId
+    if (!product) {
+      product = await prisma.productRegister.findUnique({
+        where: { productId },
+        include: {
+          images: { select: { proimgs: true }, take: 1 },
+          stockItems: {
+            orderBy: { id: "desc" },
+            take: 1,
+            select: {
+              id: true,
+              shopId: true,
+              productId: true,
+              categoryId: true,
+              itemName: true,
+              itemCode: true,
+              barCode: true,
+              saleRate: true,
+              onlineRate: true,
+              mrpRate: true,
+              curQty: true,
+              catName: true,
+              gstper: true,
+              pur_rate: true,
+            },
+          },
+        },
+      });
+    }
+
+    // 3. Fallback: If product still missing or has no stock items, try matching stock directly
+    if (!product || !product.stockItems || product.stockItems.length === 0) {
+      const fallbackStock = await prisma.shopStockItem.findFirst({
+        where: {
+          OR: [
+            { productId: productId },
+            ...(product?.productName ? [{ itemName: product.productName }] : []),
+          ],
+        },
+        orderBy: { id: "desc" },
+        select: {
+          id: true,
+          shopId: true,
+          productId: true,
+          categoryId: true,
+          itemName: true,
+          itemCode: true,
+          barCode: true,
+          saleRate: true,
+          onlineRate: true,
+          mrpRate: true,
+          curQty: true,
+          catName: true,
+          gstper: true,
+          pur_rate: true,
+        },
+      });
+
+      if (fallbackStock) {
+        if (!product) {
+          product = {
+            id: productId,
+            productId: productId,
+            productName: fallbackStock.itemName,
+            images: [],
+            stockItems: [fallbackStock],
+          } as any;
+        } else {
+          product.stockItems = [fallbackStock];
+        }
+      }
+    }
+    return product;
   }
 
   // ---------------- Update Quantity ----------------
@@ -92,22 +192,19 @@ export class CartRepository {
       throw new Error("Cart item not found");
     }
 
-    return prisma.x5_app_cart.update({
+    const updated = await prisma.x5_app_cart.update({
       where: {
         comId_productId: { comId, productId },
       },
       data: {
         quantity,
       },
-      include: {
-        product: {
-          include: {
-            images: { select: { proimgs: true }, take: 1 },
-            stockItems: { where: { status: "ONE" }, take: 1 },
-          },
-        },
-      },
     });
+
+    // Fetch product separately using helper
+    const product = await this.getProductWithStock(productId);
+
+    return { ...updated, product };
   }
 
   // ---------------- Remove Single Item ----------------

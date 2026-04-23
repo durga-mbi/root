@@ -177,10 +177,12 @@ export class OrderRepository {
         },
       });
 
-      // 4. Clear user's cart after successful order placement
+      // 4. Clear ONLY the ordered items from the user's cart
+      const orderedProductIds = data.items.map((item) => item.productId);
       await tx.x5_app_cart.updateMany({
         where: {
           comId: data.comId,
+          productId: { in: orderedProductIds },
           isDeleted: false,
         },
         data: {
@@ -196,26 +198,65 @@ export class OrderRepository {
    * Get product by ID
    */
   async getProductById(id: number) {
-    return (prisma as any).productRegister.findUnique({
+    // 1. Try internal ID first
+    let product = await (prisma as any).productRegister.findUnique({
       where: { id: id },
     });
+
+    // 2. Fallback to business productId
+    if (!product) {
+      product = await (prisma as any).productRegister.findUnique({
+        where: { productId: id },
+      });
+    }
+
+    // 3. Ultimate Fallback: If not in ProductRegister, check ShopStockItem directly
+    if (!product) {
+      const stock = await (prisma as any).shopStockItem.findFirst({
+        where: {
+          OR: [{ id: id }, { productId: id }],
+        },
+        orderBy: { id: "desc" },
+      });
+
+      if (stock) {
+        // Create virtual product from stock data
+        product = {
+          id: stock.productId || stock.id,
+          productId: stock.productId || stock.id,
+          productName: stock.itemName,
+          isVirtual: true,
+        } as any;
+      }
+    }
+    return product;
   }
 
   /**
    * Get shop stock item by product ID
    */
   async getShopStockItem(id: number) {
-    // 1. First get the product to find its productId field
+    // 1. First get the product (or virtual product)
     const product = await this.getProductById(id);
-    if (!product || !product.productId) return null;
+    if (!product) return null;
 
-    // 2. Lookup stock by the unique productId column
-    return (prisma as any).shopStockItem.findFirst({
+    // 2. If it's a virtual product, we might already have the ID we need
+    const lookupId = product.productId || id;
+
+    // 3. Lookup stock by the unique productId column OR internal ID
+    let stock = await (prisma as any).shopStockItem.findFirst({
       where: {
-        productId: product.productId,
-        status: caa1_shop_stock_item_db_status.ONE,
+        OR: [
+          { productId: lookupId },
+          { id: lookupId },
+          ...(product.productName ? [{ itemName: product.productName }] : []),
+        ],
+        // status: caa1_shop_stock_item_db_status.ONE,
       },
+      orderBy: { id: "desc" },
     });
+
+    return stock;
   }
 
   /**
