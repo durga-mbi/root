@@ -123,6 +123,7 @@ export class OrderRepository {
             : new Prisma.Decimal(0),
           net_amount_payment_mode: data.payment_mode,
           status: OrderStatus.PENDING,
+    
         },
         include: {
           orderDetails: {

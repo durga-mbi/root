@@ -7,9 +7,18 @@ export interface CursorPaginationResult<T> {
   totalCount: number;
 }
 
+// export const getCategoryById = async (id: number): Promise<Category | null> => {
+//   return prisma.category.findUnique({
+//     where: { id },
+//   });
+// };
+
 export const getCategoryById = async (id: number): Promise<Category | null> => {
   return prisma.category.findUnique({
     where: { id },
+    include:{
+      products:true,
+    }
   });
 };
 
@@ -30,14 +39,25 @@ export const getAllCategories = async (
     };
   }
 
+  // const [categories, totalCount] = await Promise.all([
+  //   prisma.category.findMany({
+  //     where: cursor ? { ...where, id: { gt: cursor } } : where,
+  //     orderBy: { disorder: "asc" },
+  //     take,
+  //   }),
+  //   prisma.category.count({ where }),
+  // ]);
   const [categories, totalCount] = await Promise.all([
     prisma.category.findMany({
       where: cursor ? { ...where, id: { gt: cursor } } : where,
       orderBy: { disorder: "asc" },
       take,
+      include:{
+        products:true
+      }
     }),
     prisma.category.count({ where }),
-  ]);
+  ]);  
 
   const hasMore = categories.length > limit;
   const data = hasMore ? categories.slice(0, limit) : categories;

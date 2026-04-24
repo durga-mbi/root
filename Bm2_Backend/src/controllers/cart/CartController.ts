@@ -68,7 +68,11 @@ export const addToCart = async (
 
       const stock = await prisma.shopStockItem.findFirst({
         where: { barCode: barcode },
-        select: { productId: true }, // Avoid invalid indate values
+        select: { 
+                        productId: true,
+                      categoryId: true,
+      }
+
       });
 
       if (stock && stock.productId) {
@@ -86,15 +90,20 @@ export const addToCart = async (
 
         const tempProductId = Math.floor(Date.now() / 1000);
 
-        // ✅ Create ProductRegister
+        //   Create ProductRegister
         await prisma.productRegister.create({
           data: {
             productName: productName,
             productId: tempProductId,
-          },
+            categoryId: req.body.categoryId 
+            // categoryId: stock?.categoryId
+                // categoryId: Number(req.body.categoryId),
+           },
         });
-
-        // ✅ Create ShopStockItem
+  // console.log(req.body.categoryId )
+  console.log("categoryId raw:", req.body.categoryId);
+console.log("categoryId parsed:", Number(req.body.categoryId));
+        //  Create ShopStockItem
         await prisma.shopStockItem.create({
           data: {
             barCode: barcode,
