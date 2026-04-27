@@ -9,36 +9,151 @@ export interface CursorPaginationResult<T> {
   totalCount: number;
 }
 
+// export const getProductRegisterById = async (
+//   id: number,
+// ): Promise<any | null> => {
+//   return prisma.productRegister.findFirst({
+//     where: { id, isDisplay: x1_app_product_register_is_display.ONE },
+    
+//     include: {
+//       images: true,
+//       stockItems: {
+//         where: { status: "ONE" },
+//       },
+//     },
+//   });
+// };
 export const getProductRegisterById = async (
   id: number,
 ): Promise<any | null> => {
-  return prisma.productRegister.findFirst({
-    where: { id, isDisplay: x1_app_product_register_is_display.ONE },
+
+  const product = await prisma.productRegister.findFirst({
+    where: {
+      id,
+      isDisplay: x1_app_product_register_is_display.ONE
+    },
     include: {
       images: true,
       stockItems: {
         where: { status: "ONE" },
+        select: {
+          id: true,
+          shopId: true,
+          productId: true,
+          categoryId: true,
+          itemName: true,
+          itemCode: true,
+          barCode: true,
+          saleRate: true,
+          onlineRate: true,
+          mrpRate: true,
+          curQty: true,
+          catName: true,
+          gstper: true,
+          pur_rate: true
+        },
       },
     },
   });
+
+  if (!product) return null;
+
+   let stockItems = product.stockItems;
+
+  if (!stockItems || stockItems.length === 0) {
+    stockItems = await prisma.shopStockItem.findMany({
+      where: {
+        OR: [
+          { productId: product.productId },
+          { itemName: product.productName }
+        ]
+      },
+      select: {
+        id: true,
+        shopId: true,
+        productId: true,
+        categoryId: true,
+        itemName: true,
+        itemCode: true,
+        barCode: true,
+        saleRate: true,
+        onlineRate: true,
+        mrpRate: true,
+        curQty: true,
+        catName: true,
+        gstper: true,
+        pur_rate: true
+      }
+    });
+  }
+
+  return {
+    ...product,
+    stockItems
+  };
 };
 
+// export const getRelatedProducts = async (
+//   currentProductId: number,
+//   categoryId?: number,
+//   limit: number = 10,
+// ): Promise<any[]> => {
+//   return prisma.productRegister.findMany({
+//     where: {
+//       id: { not: currentProductId },
+//       isDisplay: x1_app_product_register_is_display.ONE,
+//       stockItems: categoryId
+//         ? {
+//           some: {
+//             categoryId: categoryId,
+//             status: "ONE",
+//           },
+//         }
+//         : undefined,
+//     },
+//     include: {
+//       images: true,
+//       stockItems: {
+//         where: { status: "ONE" },
+//         select: {
+//           id: true,
+//           shopId: true,
+//           productId: true,
+//           categoryId: true,
+//           itemName: true,
+//           itemCode: true,
+//           barCode: true,
+//           saleRate: true,
+//           onlineRate: true,
+//           mrpRate: true,
+//           curQty: true,
+//           catName: true,
+//           gstper: true,
+//           pur_rate: true
+//         }
+//       },
+//     },
+//     take: limit,
+//     orderBy: { createdAt: "desc" },
+//   });
+// };
 export const getRelatedProducts = async (
   currentProductId: number,
   categoryId?: number,
   limit: number = 10,
 ): Promise<any[]> => {
-  return prisma.productRegister.findMany({
+
+  const products = await prisma.productRegister.findMany({
     where: {
       id: { not: currentProductId },
       isDisplay: x1_app_product_register_is_display.ONE,
       stockItems: categoryId
         ? {
-          some: {
-            categoryId: categoryId,
-            status: "ONE",
-          },
-        }
+            some: {
+              categoryId: categoryId,
+              status: "ONE",
+            },
+          }
         : undefined,
     },
     include: {
@@ -66,8 +181,49 @@ export const getRelatedProducts = async (
     take: limit,
     orderBy: { createdAt: "desc" },
   });
-};
 
+  // 🔥 ADD THIS (same fallback logic)
+  const enrichedProducts = await Promise.all(
+    products.map(async (product: any) => {
+
+      let stockItems = product.stockItems;
+
+      if (!stockItems || stockItems.length === 0) {
+        stockItems = await prisma.shopStockItem.findMany({
+          where: {
+            OR: [
+              { productId: product.productId },
+              { itemName: product.productName }
+            ]
+          },
+          select: {
+            id: true,
+            shopId: true,
+            productId: true,
+            categoryId: true,
+            itemName: true,
+            itemCode: true,
+            barCode: true,
+            saleRate: true,
+            onlineRate: true,
+            mrpRate: true,
+            curQty: true,
+            catName: true,
+            gstper: true,
+            pur_rate: true
+          }
+        });
+      }
+
+      return {
+        ...product,
+        stockItems
+      };
+    })
+  );
+
+  return enrichedProducts;
+};
 export const getAllProductRegisters = async (
   limit: number = 20,
   cursor?: number,
